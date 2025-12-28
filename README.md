@@ -9,8 +9,8 @@ Sistema de controle de estoque e vendas para a Bem Browneria.
 2. Dê um clique duplo no arquivo **`login.html`**.
 3. O sistema abrirá no seu navegador padrão.
 4. Use as credenciais de administrador (se for o primeiro acesso):
-   - **Usuário:** `admin`
-   - **Senha:** `admin`
+   - **Usuário:** `****`
+   - **Senha:** `****`
 
 ### Opção 2: Servidor Local (Recomendado)
 Para uma melhor experiência (e evitar bloqueios de segurança de alguns navegadores), é recomendado usar uma extensão como "Live Server" no VS Code ou rodar um servidor simples via terminal.
