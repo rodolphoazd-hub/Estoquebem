@@ -1,0 +1,2325 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Estoque - Bem Browneria</title>
+    <script src="js/db.js"></script>
+    <script src="js/auth.js"></script>
+    <script>checkAuth();</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Bibliotecas para importação/exportação -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Biblioteca para scanner de código de barras -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-gray-50 h-screen overflow-hidden">
+    <div class="flex h-full">
+        <!-- Sidebar (Desktop) -->
+        <aside id="desktopSidebar"
+            class="hidden md:flex flex-col w-64 bg-white shadow-xl z-20 transition-all duration-300 ease-in-out transform">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-center">
+                <div id="sidebarLogo" class="text-3xl mr-2">🧁</div>
+                <h1 id="sidebarTitle" class="text-xl font-bold text-gray-800">Doce Controle</h1>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-2">
+                <button onclick="showSection('dashboard')"
+                    class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 bg-pink-500 text-white shadow-md">
+                    <span class="text-xl mr-3">📊</span>
+                    <span class="font-medium">Dashboard</span>
+                </button>
+
+                <button onclick="showSection('vendas')"
+                    class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-600 hover:bg-pink-50 hover:text-pink-600">
+                    <span class="text-xl mr-3">💰</span>
+                    <span class="font-medium">Vendas</span>
+                </button>
+
+                <button onclick="showSection('receitas')"
+                    class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-600 hover:bg-pink-50 hover:text-pink-600">
+                    <span class="text-xl mr-3">📝</span>
+                    <span class="font-medium">Receitas</span>
+                </button>
+
+                <div class="pt-4 mt-4 border-t border-gray-100">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase mb-2">Sistema</p>
+
+                    <button onclick="showSection('configuracoes')"
+                        class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-600 hover:bg-pink-50 hover:text-pink-600">
+                        <span class="text-xl mr-3">⚙️</span>
+                        <span class="font-medium">Configurações</span>
+                    </button>
+
+                    <button onclick="showSection('personalizacao')"
+                        class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-600 hover:bg-pink-50 hover:text-pink-600">
+                        <span class="text-xl mr-3">🎨</span>
+                        <span class="font-medium">Personalizar</span>
+                    </button>
+
+                    <button onclick="showSection('usuarios')" id="menuUsuarios"
+                        class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-gray-600 hover:bg-pink-50 hover:text-pink-600">
+                        <span class="text-xl mr-3">👥</span>
+                        <span class="font-medium">Usuários</span>
+                    </button>
+
+                    <button onclick="logout()"
+                        class="nav-btn w-full flex items-center px-4 py-3 rounded-xl transition-all duration-200 text-red-600 hover:bg-red-50 hover:text-red-700 mt-4 border-t border-gray-100 pt-4">
+                        <span class="text-xl mr-3">🚪</span>
+                        <span class="font-medium">Sair</span>
+                    </button>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-gray-500 font-medium" id="sidebar-time"></span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Wrapper -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+            <!-- Header (Simplified) -->
+            <header class="bg-white shadow-sm border-b mobile-header z-10">
+                <div class="px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center py-3">
+                        <!-- Mobile Logo (Only visible on small screens) -->
+                        <div class="flex items-center md:hidden">
+                            <div id="mobileLogo" class="text-2xl mr-2">🧁</div>
+                            <h1 id="mobileTitle" class="text-lg font-bold text-gray-800">Doce Controle</h1>
+                        </div>
+
+                        <!-- Sidebar Toggle Button (Desktop) -->
+                        <div class="hidden md:flex items-center">
+                            <button onclick="toggleSidebar()"
+                                class="p-2 rounded-lg text-gray-600 hover:bg-gray-100 focus:outline-none">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 6h16M4 12h16M4 18h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Right Actions -->
+                        <div class="flex items-center space-x-3">
+                            <!-- Botão de Alertas -->
+                            <div class="relative">
+                                <button onclick="toggleAlertas()"
+                                    class="relative bg-white text-gray-600 hover:text-yellow-600 p-2 rounded-lg transition-colors duration-200 border border-transparent hover:border-gray-200"
+                                    title="Alertas do Sistema">
+                                    <span class="text-xl">🔔</span>
+                                    <span id="badgeAlertas"
+                                        class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">0</span>
+                                </button>
+
+                                <!-- Dropdown de Alertas -->
+                                <div id="dropdownAlertas"
+                                    class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                                    <!-- ... (Previous Alert Content maintained by logic, but need to re-insert markup) ... -->
+                                    <div class="p-4 border-b border-gray-200">
+                                        <div class="flex justify-between items-center">
+                                            <h3 class="font-semibold text-gray-800">🚨 Alertas do Sistema</h3>
+                                            <button onclick="verificarNotificacoes()"
+                                                class="text-blue-600 hover:text-blue-800 text-sm">Atualizar</button>
+                                        </div>
+                                    </div>
+                                    <div id="listaAlertas" class="max-h-64 overflow-y-auto">
+                                        <div class="p-4 text-center text-gray-500">
+                                            Nenhum alerta no momento
+                                        </div>
+                                    </div>
+                                    <div class="p-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                                        <button onclick="showSection('configuracoes')"
+                                            class="w-full text-center text-sm text-blue-600 hover:text-blue-800">
+                                            ⚙️ Configurar Notificações
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mobile Export -->
+                            <div class="mobile-export md:hidden">
+                                <button onclick="toggleExportMenu()"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg">
+                                    📊
+                                </button>
+                                <div id="exportMenu"
+                                    class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border">
+                                    <button onclick="exportarExcel()"
+                                        class="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-t-lg">📗 Exportar
+                                        Excel</button>
+                                    <button onclick="exportarPDF()"
+                                        class="w-full text-left px-4 py-2 hover:bg-gray-100 rounded-b-lg">📄 Exportar
+                                        PDF</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Scrollable Content Area -->
+            <main
+                class="flex-1 overflow-y-auto bg-gray-50 px-2 sm:px-4 lg:px-8 py-4 md:py-8 mobile-content scroll-smooth">
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="section-content">
+                    <div class="fade-in">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-8 flex items-center">
+                            📊 Dashboard de Produtos </h2>
+
+                        <!-- Cards de Resumo -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-blue-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Total de Itens</p>
+                                        <p class="text-lg md:text-2xl font-bold text-blue-600" id="totalItens">0</p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">📦</div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-red-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Estoque Baixo</p>
+                                        <p class="text-lg md:text-2xl font-bold text-red-600" id="estoqueBaixo">0</p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">⚠️</div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-green-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Valor Total</p>
+                                        <p class="text-lg md:text-2xl font-bold text-green-600" id="valorTotal">R$ 0,00
+                                        </p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">💰</div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-purple-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Categorias</p>
+                                        <p class="text-lg md:text-2xl font-bold text-purple-600" id="totalCategorias">0
+                                        </p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">📋</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Adicionar Item -->
+                        <div class="bg-white rounded-lg md:rounded-xl shadow-lg p-4 md:p-6 mb-6 md:mb-8">
+                            <div
+                                class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-3">
+                                <h3 class="text-lg md:text-xl font-bold text-gray-800">➕ Adicionar Item</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="openModal('modalImportacao')"
+                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📥 Importar Planilha
+                                    </button>
+                                </div>
+                            </div>
+                            <form onsubmit="adicionarItemDashboard(event)"
+                                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Item</label>
+                                    <input type="text" id="nomeItemDash" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Categoria</label>
+                                    <select id="categoriaItemDash" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                        <option value="">Selecione</option>
+                                        <option value="Ingredientes Básicos">Ingredientes Básicos</option>
+                                        <option value="Decoração">Decoração</option>
+                                        <option value="Embalagens">Embalagens</option>
+                                        <option value="Laticínios">Laticínios</option>
+                                        <option value="Frutas">Frutas</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                                    <input type="number" id="quantidadeItemDash" required min="0.01" step="0.01"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Unidade</label>
+                                    <select id="unidadeItemDash" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                        <option value="kg">kg</option>
+                                        <option value="g">g</option>
+                                        <option value="L">L</option>
+                                        <option value="ml">ml</option>
+                                        <option value="un">un</option>
+                                        <option value="cx">cx</option>
+                                        <option value="pct">pct</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Preço por Unidade
+                                        (R$)</label>
+                                    <input type="number" id="precoItemDash" required min="0" step="0.01"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Data de Validade</label>
+                                    <input type="date" id="validadeItemDash"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Marca</label>
+                                    <input type="text" id="marcaItemDash"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent">
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Código de Barras</label>
+                                    <div class="flex space-x-2">
+                                        <input type="text" id="codigoBarrasItemDash"
+                                            placeholder="Digite ou escaneie o código"
+                                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            onblur="verificarCodigoBarrasUnico('codigoBarrasItemDash', 'dashboard')">
+                                        <button type="button" onclick="iniciarScanner('codigoBarrasItemDash')"
+                                            class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg transition-colors duration-200"
+                                            title="Escanear código de barras">
+                                            📷
+                                        </button>
+                                    </div>
+                                    <div id="alertaCodigoDash"
+                                        class="hidden mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-2">
+                                        ⚠️ Este código de barras já está sendo usado por outro produto!
+                                    </div>
+                                </div>
+                                <div class="flex items-end">
+                                    <button type="submit"
+                                        class="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200">
+                                        Adicionar Item
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Lista de Inventário -->
+                        <div class="bg-white rounded-lg md:rounded-xl shadow-lg p-4 md:p-6">
+                            <div
+                                class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-3">
+                                <h3 class="text-lg md:text-xl font-bold text-gray-800">📋 Lista de Inventário</h3>
+                                <div class="hidden md:flex space-x-3">
+                                    <button onclick="exportarExcel()"
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📗 Exportar Excel
+                                    </button>
+                                    <button onclick="exportarPDF()"
+                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📄 Exportar PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Controles de Busca e Filtros -->
+                            <div class="bg-gray-50 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+                                    <!-- Busca -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">🔍 Buscar</label>
+                                        <input type="text" id="buscarInventario" placeholder="Nome, marca ou código..."
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            onkeyup="filtrarInventario()">
+                                    </div>
+
+                                    <!-- Filtrar por Categoria -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por
+                                            Categoria</label>
+                                        <select id="filtroCategoria"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            onchange="filtrarInventario()">
+                                            <option value="">Todas as categorias</option>
+                                            <option value="Ingredientes Básicos">Ingredientes Básicos</option>
+                                            <option value="Decoração">Decoração</option>
+                                            <option value="Embalagens">Embalagens</option>
+                                            <option value="Laticínios">Laticínios</option>
+                                            <option value="Frutas">Frutas</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Filtrar por Estoque -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Filtrar por
+                                            Estoque</label>
+                                        <select id="filtroEstoque"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            onchange="filtrarInventario()">
+                                            <option value="">Todos os níveis</option>
+                                            <option value="baixo">🔴 Estoque Baixo</option>
+                                            <option value="medio">🟡 Estoque Médio</option>
+                                            <option value="alto">🟢 Estoque Alto</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Ordenar por -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Ordenar por</label>
+                                        <select id="ordenarPor"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            onchange="filtrarInventario()">
+                                            <option value="nome">Nome (A-Z)</option>
+                                            <option value="nome-desc">Nome (Z-A)</option>
+                                            <option value="categoria">Categoria</option>
+                                            <option value="quantidade">Quantidade (Menor)</option>
+                                            <option value="quantidade-desc">Quantidade (Maior)</option>
+                                            <option value="preco">Preço (Menor)</option>
+                                            <option value="preco-desc">Preço (Maior)</option>
+                                            <option value="valor-total">Valor Total (Menor)</option>
+                                            <option value="valor-total-desc">Valor Total (Maior)</option>
+                                            <option value="validade">Validade (Próxima)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Botão Limpar Filtros -->
+                                <div class="mt-4 flex justify-between items-center">
+                                    <button onclick="limparFiltros()"
+                                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors duration-200">
+                                        🗑️ Limpar Filtros
+                                    </button>
+                                    <div id="resultadosFiltro" class="text-sm text-gray-600">
+                                        Mostrando todos os itens
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ações em Lote -->
+                            <div id="acoesBatch" class="acoes-multiplas hidden">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-4">
+                                        <span id="itensSelecionados" class="text-sm font-medium text-gray-700">0 itens
+                                            selecionados</span>
+                                        <button onclick="selecionarTodos()"
+                                            class="text-sm text-blue-600 hover:text-blue-800">Selecionar Todos</button>
+                                        <button onclick="deselecionarTodos()"
+                                            class="text-sm text-gray-600 hover:text-gray-800">Desmarcar Todos</button>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button onclick="excluirSelecionados()"
+                                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                            🗑️ Excluir Selecionados
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 mobile-table">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <input type="checkbox" id="selectAll" class="checkbox-produto"
+                                                    onchange="toggleSelectAll()">
+                                            </th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Item</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Categoria</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Quantidade</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Preço Unit.</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Valor Total</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="inventarioDashboard" class="bg-white divide-y divide-gray-200">
+                                        <!-- Itens do inventário serão inseridos aqui -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Paginação -->
+                            <div class="flex items-center justify-between mt-6">
+                                <div class="flex items-center space-x-4">
+                                    <label class="text-sm font-medium text-gray-700">Itens por página:</label>
+                                    <select id="itensPorPagina"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                        onchange="mudarItensPorPagina()">
+                                        <option value="10">10</option>
+                                        <option value="25" selected>25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex items-center space-x-2">
+                                    <button id="btnAnterior" onclick="paginaAnterior()"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled>
+                                        ← Anterior
+                                    </button>
+                                    <div id="infoPagina" class="px-4 py-2 text-sm text-gray-700">
+                                        Página 1 de 1
+                                    </div>
+                                    <button id="btnProximo" onclick="proximaPagina()"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled>
+                                        Próximo →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Vendas Section -->
+                <section id="vendas" class="section-content hidden">
+                    <div class="fade-in">
+                        <div class="flex justify-between items-center mb-8">
+                            <h2 class="text-3xl font-bold text-gray-800 flex items-center">
+                                💰 Controle de Vendas
+                            </h2>
+                            <div class="flex space-x-3">
+                                <button onclick="openModal('modalVenda')"
+                                    class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                    ➕ Novo Pedido
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cards de Vendas -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-green-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Vendas Hoje</p>
+                                        <p class="text-lg md:text-2xl font-bold text-green-600" id="vendasHoje">R$ 0,00
+                                        </p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">📈</div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-blue-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Vendas do Mês</p>
+                                        <p class="text-lg md:text-2xl font-bold text-blue-600" id="vendasMes">R$ 0,00
+                                        </p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">💵</div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-purple-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Lucro do Mês</p>
+                                        <p class="text-lg md:text-2xl font-bold text-purple-600" id="lucroMes">R$ 0,00
+                                        </p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">💎</div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="bg-white rounded-lg md:rounded-xl shadow-lg p-3 md:p-6 border-l-4 border-orange-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-xs md:text-sm font-medium text-gray-600">Margem Média</p>
+                                        <p class="text-lg md:text-2xl font-bold text-orange-600" id="margemMedia">0%</p>
+                                    </div>
+                                    <div class="text-xl md:text-3xl">📊</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gráficos de Análise -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <!-- Evolução do Lucro -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <div
+                                    class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                                    <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                                        📈 Evolução do Lucro
+                                    </h3>
+                                    <div class="flex flex-col md:flex-row gap-2">
+                                        <select id="filtroPeríodoLucro"
+                                            class="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onchange="atualizarGraficoEvolucaoLucro()">
+                                            <option value="7">Últimos 7 dias</option>
+                                            <option value="15">Últimos 15 dias</option>
+                                            <option value="30" selected>Últimos 30 dias</option>
+                                            <option value="60">Últimos 60 dias</option>
+                                            <option value="90">Últimos 90 dias</option>
+                                        </select>
+                                        <select id="filtroTipoLucro"
+                                            class="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onchange="atualizarGraficoEvolucaoLucro()">
+                                            <option value="lucro">Lucro</option>
+                                            <option value="vendas">Vendas</option>
+                                            <option value="margem">Margem Média</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="h-64 flex items-end justify-between space-x-1" id="graficoEvolucaoLucro">
+                                    <!-- Barras do gráfico serão inseridas aqui -->
+                                </div>
+                                <div class="mt-4 flex justify-between items-center">
+                                    <p id="labelPeriodoLucro" class="text-sm text-gray-600">Últimos 30 dias</p>
+                                    <div class="flex items-center space-x-4 text-xs">
+                                        <div id="totalPeriodoLucro" class="text-green-600 font-medium"></div>
+                                        <div id="mediaPeriodoLucro" class="text-blue-600 font-medium"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vendas vs Lucro Mensal -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                                    💰 Vendas vs Lucro (Últimos 6 meses)
+                                </h3>
+                                <div class="h-64" id="graficoVendasLucro">
+                                    <div class="h-full flex items-end justify-between space-x-2">
+                                        <!-- Barras comparativas serão inseridas aqui -->
+                                    </div>
+                                </div>
+                                <div class="mt-4 flex justify-center space-x-4 text-sm">
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                                        <span class="text-gray-600">Vendas</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <div class="w-3 h-3 bg-green-500 rounded mr-2"></div>
+                                        <span class="text-gray-600">Lucro</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Produtos Mais Lucrativos -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                                    🏆 Produtos Mais Lucrativos
+                                </h3>
+                                <div id="produtosMaisLucrativos" class="space-y-3">
+                                    <!-- Lista de produtos será inserida aqui -->
+                                </div>
+                            </div>
+
+                            <!-- Distribuição de Margem -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                                    🎯 Distribuição de Margem
+                                </h3>
+                                <div id="graficoDistribuicaoMargem" class="h-64 flex items-center justify-center">
+                                    <!-- Gráfico de pizza será inserido aqui -->
+                                </div>
+                                <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
+                                    <div class="text-center">
+                                        <div class="w-4 h-4 bg-red-500 rounded mx-auto mb-1"></div>
+                                        <span class="text-gray-600">Baixa (&lt;30%)</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="w-4 h-4 bg-yellow-500 rounded mx-auto mb-1"></div>
+                                        <span class="text-gray-600">Média (30-60%)</span>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="w-4 h-4 bg-green-500 rounded mx-auto mb-1"></div>
+                                        <span class="text-gray-600">Alta (&gt;60%)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Histórico de Vendas -->
+                        <div class="bg-white rounded-lg md:rounded-xl shadow-lg p-4 md:p-6">
+                            <div
+                                class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-3">
+                                <h3 class="text-lg md:text-xl font-bold text-gray-800">📋 Histórico de Vendas</h3>
+                                <div class="hidden md:flex space-x-3">
+                                    <button onclick="exportarVendasExcel()"
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📗 Exportar Excel
+                                    </button>
+                                    <button onclick="exportarVendasPDF()"
+                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📄 Exportar PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Controles de Busca e Filtros -->
+                            <div class="bg-gray-50 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4">
+                                    <!-- Busca -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">🔍 Buscar</label>
+                                        <input type="text" id="buscarVendas" placeholder="Cliente, produto..."
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onkeyup="filtrarVendas()">
+                                    </div>
+
+                                    <!-- Filtrar por Período -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
+                                        <select id="filtroPeriodo"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onchange="filtrarVendas()">
+                                            <option value="">Todos os períodos</option>
+                                            <option value="hoje">Hoje</option>
+                                            <option value="semana">Esta semana</option>
+                                            <option value="mes">Este mês</option>
+                                            <option value="trimestre">Último trimestre</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Filtrar por Valor -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Valor da
+                                            Venda</label>
+                                        <select id="filtroValor"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onchange="filtrarVendas()">
+                                            <option value="">Todos os valores</option>
+                                            <option value="baixo">Até R$ 50</option>
+                                            <option value="medio">R$ 50 - R$ 200</option>
+                                            <option value="alto">Acima de R$ 200</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Ordenar por -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Ordenar por</label>
+                                        <select id="ordenarVendasPor"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onchange="filtrarVendas()">
+                                            <option value="data-desc">Data (Mais recente)</option>
+                                            <option value="data">Data (Mais antiga)</option>
+                                            <option value="cliente">Cliente (A-Z)</option>
+                                            <option value="cliente-desc">Cliente (Z-A)</option>
+                                            <option value="total">Valor (Menor)</option>
+                                            <option value="total-desc">Valor (Maior)</option>
+                                            <option value="lucro">Lucro (Menor)</option>
+                                            <option value="lucro-desc">Lucro (Maior)</option>
+                                            <option value="margem">Margem (Menor)</option>
+                                            <option value="margem-desc">Margem (Maior)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Botão Limpar Filtros -->
+                                <div class="mt-4 flex justify-between items-center">
+                                    <button onclick="limparFiltrosVendas()"
+                                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors duration-200">
+                                        🗑️ Limpar Filtros
+                                    </button>
+                                    <div id="resultadosFiltroVendas" class="text-sm text-gray-600">
+                                        Mostrando todas as vendas
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ações em Lote -->
+                            <div id="acoesVendasBatch" class="acoes-multiplas hidden">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-4">
+                                        <span id="vendasSelecionadas" class="text-sm font-medium text-gray-700">0 vendas
+                                            selecionadas</span>
+                                        <button onclick="selecionarTodasVendas()"
+                                            class="text-sm text-blue-600 hover:text-blue-800">Selecionar Todas</button>
+                                        <button onclick="deselecionarTodasVendas()"
+                                            class="text-sm text-gray-600 hover:text-gray-800">Desmarcar Todas</button>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button onclick="excluirVendasSelecionadas()"
+                                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                            🗑️ Excluir Selecionadas
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200 mobile-table">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                <input type="checkbox" id="selectAllVendas" class="checkbox-produto"
+                                                    onchange="toggleSelectAllVendas()">
+                                            </th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Data</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Cliente</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Itens</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Total</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Lucro</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Margem</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabelaVendas" class="bg-white divide-y divide-gray-200">
+                                        <!-- Vendas serão inseridas aqui -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Paginação de Vendas -->
+                            <div class="flex items-center justify-between mt-6">
+                                <div class="flex items-center space-x-4">
+                                    <label class="text-sm font-medium text-gray-700">Vendas por página:</label>
+                                    <select id="vendasPorPagina"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        onchange="mudarVendasPorPagina()">
+                                        <option value="10">10</option>
+                                        <option value="25" selected>25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+
+                                <div class="flex items-center space-x-2">
+                                    <button id="btnAnteriorVendas" onclick="paginaAnteriorVendas()"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled>
+                                        ← Anterior
+                                    </button>
+                                    <div id="infoPaginaVendas" class="px-4 py-2 text-sm text-gray-700">
+                                        Página 1 de 1
+                                    </div>
+                                    <button id="btnProximoVendas" onclick="proximaPaginaVendas()"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled>
+                                        Próximo →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Receitas Section -->
+                <section id="receitas" class="section-content hidden">
+                    <div class="fade-in">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-3">
+                            <h2 class="text-3xl font-bold text-gray-800 flex items-center">
+
+                            </h2>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="openModal('modalImportacaoReceitas')"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                    📥 Importar Receitas
+                                </button>
+                                <div class="hidden md:flex space-x-2">
+                                    <button onclick="exportarReceitasExcel()"
+                                        class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📗 Exportar Excel
+                                    </button>
+                                    <button onclick="exportarReceitasPDF()"
+                                        class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                        📄 Exportar PDF
+                                    </button>
+                                </div>
+                                <button onclick="openModal('modalReceita')"
+                                    class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                    ➕ Nova Receita
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Receitas -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="listaReceitas">
+                            <!-- Receitas serão inseridas aqui -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Configurações Section -->
+                <section id="configuracoes" class="section-content hidden">
+                    <div class="fade-in">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-8 flex items-center">
+                            ⚙️ Configurações do Sistema
+                        </h2>
+
+                        <!-- Limites de Estoque por Unidade de Medida -->
+                        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                                    📊 Limites de Estoque por Unidade de Medida
+                                </h3>
+                                <button onclick="restaurarPadroes()"
+                                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                    🔄 Restaurar Padrões
+                                </button>
+                            </div>
+
+                            <!-- Como Funciona -->
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                <h4 class="font-semibold text-blue-800 mb-2 flex items-center">
+                                    💡 Como Funciona
+                                </h4>
+                                <p class="text-blue-700 text-sm mb-3">
+                                    Configure os limites ideais para cada unidade de medida. O sistema usará estes
+                                    valores para
+                                    classificar automaticamente o status do estoque:
+                                </p>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                    <div class="flex items-center">
+                                        <span class="text-red-500 mr-2">🔴</span>
+                                        <span class="text-blue-700"><strong>Estoque Baixo:</strong> Abaixo do limite
+                                            mínimo</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="text-yellow-500 mr-2">🟡</span>
+                                        <span class="text-blue-700"><strong>Estoque Médio:</strong> Entre mínimo e
+                                            máximo</span>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="text-green-500 mr-2">🟢</span>
+                                        <span class="text-blue-700"><strong>Estoque Alto:</strong> Acima do limite
+                                            máximo</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configuração de Limites -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                <!-- Unidades de Peso -->
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-4 flex items-center">
+                                        ⚖️ Unidades de Peso
+                                    </h4>
+                                    <div class="space-y-4">
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Quilogramas
+                                                (kg)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-kg-min" value="1" min="0" step="0.1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-kg-max" value="10" min="0"
+                                                        step="0.1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Gramas
+                                                (g)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-g-min" value="100" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-g-max" value="1000" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Unidades de Volume -->
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-4 flex items-center">
+                                        🥛 Unidades de Volume
+                                    </h4>
+                                    <div class="space-y-4">
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Litros
+                                                (L)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-L-min" value="1" min="0" step="0.1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-L-max" value="10" min="0" step="0.1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Mililitros
+                                                (ml)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-ml-min" value="100" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-ml-max" value="1000" min="0"
+                                                        step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Unidades e Embalagens -->
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-4 flex items-center">
+                                        📦 Unidades e Embalagens
+                                    </h4>
+                                    <div class="space-y-4">
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Unidades
+                                                (un)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-un-min" value="5" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-un-max" value="50" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Caixas
+                                                (cx)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-cx-min" value="2" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-cx-max" value="20" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-gray-50 rounded-lg p-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Pacotes
+                                                (pct)</label>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Mínimo</label>
+                                                    <input type="number" id="limite-pct-min" value="3" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-1">Máximo</label>
+                                                    <input type="number" id="limite-pct-max" value="30" min="0" step="1"
+                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                        onchange="salvarLimites()">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Resumo dos Limites -->
+                            <div class="mt-8">
+                                <h4 class="font-semibold text-gray-800 mb-4 flex items-center">
+                                    📋 Resumo dos Limites Configurados
+                                </h4>
+                                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3" id="resumoLimites">
+                                    <!-- Resumo será inserido aqui -->
+                                </div>
+                                <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p class="text-yellow-800 text-sm">
+                                        <strong>💡 Dica:</strong> Ajuste os limites baseado no seu consumo médio e
+                                        frequência de
+                                        compras. Produtos com maior rotatividade precisam de limites mais altos.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notificações Push -->
+                        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                            <div class="flex justify-between items-center mb-6">
+                                <h3 class="text-xl font-bold text-gray-800 flex items-center">
+                                    📱 Notificações Push
+                                </h3>
+                                <button onclick="verificarNotificacoes()"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center">
+                                    🔔 Verificar Alertas
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Configurações de Notificação -->
+                                <div>
+                                    <div class="space-y-4">
+                                        <label
+                                            class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                                            <input type="checkbox" id="notificarEstoqueBaixo" checked
+                                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3"
+                                                onchange="salvarConfiguracoes()">
+                                            <div>
+                                                <div class="font-medium text-gray-800">Notificar quando estoque baixo
+                                                </div>
+                                                <div class="text-sm text-gray-600">Receba alertas quando produtos
+                                                    atingirem o
+                                                    limite mínimo</div>
+                                            </div>
+                                        </label>
+
+                                        <label
+                                            class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                                            <input type="checkbox" id="notificarVencimento" checked
+                                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3"
+                                                onchange="salvarConfiguracoes()">
+                                            <div>
+                                                <div class="font-medium text-gray-800">Notificar produtos próximos ao
+                                                    vencimento
+                                                </div>
+                                                <div class="text-sm text-gray-600">Alertas para produtos que estão
+                                                    próximos da
+                                                    data de validade</div>
+                                            </div>
+                                        </label>
+
+                                        <label
+                                            class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                                            <input type="checkbox" id="notificarWhatsApp"
+                                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3"
+                                                onchange="salvarConfiguracoes()">
+                                            <div>
+                                                <div class="font-medium text-gray-800">Enviar avisos por WhatsApp ou
+                                                    email</div>
+                                                <div class="text-sm text-gray-600">Receba notificações também em canais
+                                                    externos
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        <label
+                                            class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                                            <input type="checkbox" id="notificacaoAutomatica"
+                                                class="rounded border-gray-300 text-purple-600 focus:ring-purple-500 mr-3"
+                                                onchange="salvarConfiguracoes()">
+                                            <div>
+                                                <div class="font-medium text-gray-800">Verificação automática de alertas
+                                                </div>
+                                                <div class="text-sm text-gray-600">Verifica automaticamente a cada 30
+                                                    minutos
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Configurações de Vencimento -->
+                                <div>
+                                    <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                                        <h4 class="font-semibold text-orange-800 mb-4 flex items-center">
+                                            ⏰ Dias de Antecedência para Vencimento
+                                        </h4>
+                                        <div class="flex items-center space-x-4">
+                                            <input type="number" id="diasAntecedencia" value="7" min="1" max="30"
+                                                class="w-20 px-3 py-2 border border-orange-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-center font-bold text-lg"
+                                                onchange="salvarConfiguracoes()">
+                                            <span class="text-orange-700 font-medium">dias</span>
+                                        </div>
+                                        <p class="text-orange-700 text-sm mt-2">
+                                            Quantos dias antes do vencimento você quer ser notificado
+                                        </p>
+                                    </div>
+
+                                    <!-- Status das Notificações -->
+                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <h4 class="font-semibold text-blue-800 mb-3 flex items-center">
+                                            📊 Status Atual dos Alertas
+                                        </h4>
+                                        <div id="statusNotificacoes" class="space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <span class="text-blue-700">Produtos com estoque baixo:</span>
+                                                <span id="countEstoqueBaixo" class="font-bold text-red-600">0</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-blue-700">Produtos próximos ao vencimento:</span>
+                                                <span id="countVencimento" class="font-bold text-orange-600">0</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-blue-700">Última verificação:</span>
+                                                <span id="ultimaVerificacao"
+                                                    class="font-medium text-blue-800">Nunca</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Configurações de Contato (aparece quando WhatsApp está ativo) -->
+                                    <div id="configContato" class="hidden mt-4 space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">WhatsApp</label>
+                                            <input type="tel" id="whatsappContato" placeholder="(11) 99999-9999"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                onchange="salvarConfiguracoes()">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                            <input type="email" id="emailContato" placeholder="seu@email.com"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                                onchange="salvarConfiguracoes()">
+                                        </div>
+
+                                        <!-- Botão de Teste de Envio -->
+                                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <h5 class="font-semibold text-blue-800 mb-3 flex items-center">
+                                                📤 Teste de Envio Manual
+                                            </h5>
+                                            <p class="text-blue-700 text-sm mb-4">
+                                                Envie um relatório de alertas manualmente para testar suas configurações
+                                                de
+                                                contato.
+                                            </p>
+                                            <div class="flex space-x-2">
+                                                <button onclick="enviarAlertasWhatsApp()"
+                                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center">
+                                                    📱 Enviar WhatsApp
+                                                </button>
+                                                <button onclick="enviarAlertasEmail()"
+                                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center">
+                                                    📧 Enviar Email
+                                                </button>
+                                            </div>
+                                            <div class="mt-3">
+                                                <button onclick="gerarRelatorioAlertas()"
+                                                    class="w-full bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center">
+                                                    📋 Gerar Relatório Completo
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Backup e Restauração -->
+                        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                💾 Backup e Restauração
+                            </h3>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="bg-green-50 border border-green-200 rounded-lg p-6">
+                                    <h4 class="font-semibold text-green-800 mb-3 flex items-center">
+                                        📤 Exportar Backup
+                                    </h4>
+                                    <p class="text-green-700 text-sm mb-4">
+                                        Salve todos os seus dados (produtos, receitas, vendas e configurações) em um
+                                        arquivo
+                                        seguro.
+                                    </p>
+                                    <button onclick="exportarBackup()"
+                                        class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200">
+                                        📥 Fazer Backup Completo
+                                    </button>
+                                </div>
+
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                                    <h4 class="font-semibold text-blue-800 mb-3 flex items-center">
+                                        📥 Importar Backup
+                                    </h4>
+                                    <p class="text-blue-700 text-sm mb-4">
+                                        Restaure seus dados de um arquivo de backup anterior. <strong>Atenção:</strong>
+                                        Isso
+                                        substituirá todos os dados atuais.
+                                    </p>
+                                    <button onclick="importarBackup()"
+                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200">
+                                        📤 Restaurar Backup
+                                    </button>
+                                </div>
+
+                                <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                                    <h4 class="font-semibold text-red-800 mb-3 flex items-center">
+                                        🗑️ Limpar Sistema
+                                    </h4>
+                                    <p class="text-red-700 text-sm mb-4">
+                                        Remove todos os dados do sistema e reinicia completamente.
+                                        <strong>Cuidado:</strong>
+                                        Esta ação não pode ser desfeita!
+                                    </p>
+                                    <button onclick="limparTodosDados()"
+                                        class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-200">
+                                        🗑️ Limpar Todos os Dados
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gerenciamento de Categorias -->
+                        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+                            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                📂 Gerenciamento de Categorias
+                            </h3>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Lista de Categorias -->
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-4">Categorias Existentes</h4>
+                                    <div class="space-y-3" id="listaCategorias">
+                                        <!-- Categorias serão inseridas aqui -->
+                                    </div>
+
+                                    <!-- Adicionar Nova Categoria -->
+                                    <div class="mt-4 flex space-x-2">
+                                        <input type="text" id="novaCategoria" placeholder="Nome da nova categoria"
+                                            class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            onkeypress="if(event.key==='Enter') adicionarCategoria()">
+                                        <button onclick="adicionarCategoria()"
+                                            class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                                            ➕ Adicionar
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Estatísticas das Categorias -->
+                                <div>
+                                    <h4 class="font-semibold text-gray-800 mb-4">Estatísticas por Categoria</h4>
+                                    <div class="bg-gray-50 rounded-lg p-4">
+                                        <div class="space-y-2" id="estatisticasCategorias">
+                                            <!-- Estatísticas serão inseridas aqui -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configurações Gerais -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-bold text-gray-800 mb-6">Configurações Gerais</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Moeda do Sistema</label>
+                                    <select id="moeda"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        onchange="salvarConfiguracoes()">
+                                        <option value="BRL">🇧🇷 Real Brasileiro (R$)</option>
+                                        <option value="USD">🇺🇸 Dólar Americano ($)</option>
+                                        <option value="EUR">🇪🇺 Euro (€)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Fuso Horário</label>
+                                    <select
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <option value="America/Sao_Paulo">🇧🇷 Brasília (GMT-3)</option>
+                                        <option value="America/New_York">🇺🇸 Nova York (GMT-5)</option>
+                                        <option value="Europe/London">🇬🇧 Londres (GMT+0)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Personalização Section -->
+                <section id="personalizacao" class="section-content hidden">
+                    <div class="fade-in">
+                        <h2 class="text-3xl font-bold text-gray-800 mb-8 flex items-center">
+                            🎨 Personalização do Sistema
+                        </h2>
+
+                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+                            <!-- Identidade Visual -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                    🏷️ Identidade da Empresa
+                                </h3>
+
+                                <div class="space-y-6">
+                                    <!-- Nome da Empresa -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Nome da
+                                            Empresa</label>
+                                        <input type="text" id="nomeEmpresa" value="Doce Controle"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            onchange="atualizarNomeEmpresa()">
+                                        <p class="text-xs text-gray-500 mt-1">Este nome aparecerá no cabeçalho do
+                                            sistema</p>
+                                    </div>
+
+                                    <!-- Logo da Empresa -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Logo da
+                                            Empresa</label>
+                                        <div class="space-y-3">
+                                            <!-- Upload de Logo -->
+                                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-pink-400 transition-colors cursor-pointer"
+                                                onclick="document.getElementById('logoUpload').click()">
+                                                <div class="text-2xl mb-2">📁</div>
+                                                <p class="text-sm text-gray-600">Clique para fazer upload do logo</p>
+                                                <p class="text-xs text-gray-400 mt-1">PNG, JPG ou SVG (máx. 2MB)</p>
+                                                <input type="file" id="logoUpload" accept="image/*" class="hidden"
+                                                    onchange="processarLogo(this)">
+                                            </div>
+
+                                            <!-- Preview do Logo -->
+                                            <div id="logoPreview" class="hidden bg-gray-50 rounded-lg p-4 text-center">
+                                                <img id="logoImage" src="" alt="Logo" class="max-h-16 mx-auto mb-2">
+                                                <button onclick="removerLogo()"
+                                                    class="text-red-500 hover:text-red-700 text-sm">🗑️ Remover
+                                                    Logo</button>
+                                            </div>
+
+                                            <!-- Emojis Alternativos -->
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-500 mb-2">Ou escolha
+                                                    um
+                                                    emoji:</label>
+                                                <div class="grid grid-cols-8 gap-2">
+                                                    <button onclick="selecionarEmoji('🧁')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🧁</button>
+                                                    <button onclick="selecionarEmoji('🍰')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🍰</button>
+                                                    <button onclick="selecionarEmoji('🎂')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🎂</button>
+                                                    <button onclick="selecionarEmoji('🍪')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🍪</button>
+                                                    <button onclick="selecionarEmoji('🥧')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🥧</button>
+                                                    <button onclick="selecionarEmoji('🍩')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🍩</button>
+                                                    <button onclick="selecionarEmoji('🧈')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🧈</button>
+                                                    <button onclick="selecionarEmoji('🍯')"
+                                                        class="emoji-btn p-2 text-2xl hover:bg-pink-100 rounded-lg transition-colors">🍯</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Preview do Cabeçalho -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Preview do
+                                            Cabeçalho:</label>
+                                        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                                            <div class="flex items-center">
+                                                <div id="previewLogo" class="text-3xl mr-3">🧁</div>
+                                                <h1 id="previewNome" class="text-2xl font-bold text-gray-800">Doce
+                                                    Controle</h1>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Temas e Modo Escuro -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                    🌙 Temas e Modo Escuro
+                                </h3>
+
+                                <div class="space-y-6">
+                                    <!-- Modo Escuro -->
+                                    <div>
+                                        <label
+                                            class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+                                            <input type="checkbox" id="modoEscuro"
+                                                class="rounded border-gray-300 text-gray-800 focus:ring-gray-500 mr-3"
+                                                onchange="toggleModoEscuro()">
+                                            <div>
+                                                <div class="font-medium text-gray-800">🌙 Modo Escuro</div>
+                                                <div class="text-sm text-gray-600">Ativar tema escuro para reduzir o
+                                                    cansaço
+                                                    visual</div>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Tema Principal -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-3">Tema de
+                                            Cores</label>
+
+                                        <!-- Temas Predefinidos -->
+                                        <div class="grid grid-cols-2 gap-3 mb-4">
+                                            <button onclick="aplicarTema('rosa')"
+                                                class="tema-btn flex items-center justify-center p-4 border-2 border-pink-300 rounded-lg hover:border-pink-500 transition-colors bg-gradient-to-br from-pink-50 to-purple-50">
+                                                <div class="text-center">
+                                                    <div class="w-8 h-8 bg-pink-500 rounded-full mx-auto mb-2"></div>
+                                                    <span class="text-sm font-medium">Rosa</span>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarTema('azul')"
+                                                class="tema-btn flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-blue-500 transition-colors bg-gradient-to-br from-blue-50 to-indigo-50">
+                                                <div class="text-center">
+                                                    <div class="w-8 h-8 bg-blue-500 rounded-full mx-auto mb-2"></div>
+                                                    <span class="text-sm font-medium">Azul</span>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarTema('verde')"
+                                                class="tema-btn flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-green-500 transition-colors bg-gradient-to-br from-green-50 to-emerald-50">
+                                                <div class="text-center">
+                                                    <div class="w-8 h-8 bg-green-500 rounded-full mx-auto mb-2"></div>
+                                                    <span class="text-sm font-medium">Verde</span>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarTema('roxo')"
+                                                class="tema-btn flex items-center justify-center p-4 border-2 border-gray-300 rounded-lg hover:border-purple-500 transition-colors bg-gradient-to-br from-purple-50 to-violet-50">
+                                                <div class="text-center">
+                                                    <div class="w-8 h-8 bg-purple-500 rounded-full mx-auto mb-2"></div>
+                                                    <span class="text-sm font-medium">Roxo</span>
+                                                </div>
+                                            </button>
+                                        </div>
+
+                                        <!-- Cores Personalizadas -->
+                                        <div class="border-t pt-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-3">🎨 Cores
+                                                Personalizadas</label>
+
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <!-- Cor Primária -->
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-2">Cor Primária</label>
+                                                    <div class="flex items-center space-x-2">
+                                                        <input type="color" id="corPrimaria" value="#ec4899"
+                                                            class="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                                                            onchange="aplicarCoresPersonalizadas()">
+                                                        <div class="flex-1">
+                                                            <input type="text" id="corPrimariaHex" value="#ec4899"
+                                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                                                onchange="sincronizarCorPrimaria()"
+                                                                placeholder="#ec4899">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Cor Secundária -->
+                                                <div>
+                                                    <label class="block text-xs text-gray-600 mb-2">Cor
+                                                        Secundária</label>
+                                                    <div class="flex items-center space-x-2">
+                                                        <input type="color" id="corSecundaria" value="#a855f7"
+                                                            class="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                                                            onchange="aplicarCoresPersonalizadas()">
+                                                        <div class="flex-1">
+                                                            <input type="text" id="corSecundariaHex" value="#a855f7"
+                                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                                                onchange="sincronizarCorSecundaria()"
+                                                                placeholder="#a855f7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Botões de Ação -->
+                                            <div class="flex space-x-2 mt-4">
+                                                <button onclick="aplicarCoresPersonalizadas()"
+                                                    class="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200">
+                                                    ✨ Aplicar Cores
+                                                </button>
+                                                <button onclick="gerarPaletaAleatoria()"
+                                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors duration-200">
+                                                    🎲 Aleatório
+                                                </button>
+                                            </div>
+
+                                            <!-- Paletas Sugeridas -->
+                                            <div class="mt-4">
+                                                <label class="block text-xs text-gray-600 mb-2">💡 Paletas
+                                                    Sugeridas</label>
+                                                <div class="grid grid-cols-4 gap-2">
+                                                    <button onclick="aplicarPaletaSugerida('#ff6b6b', '#4ecdc4')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #ff6b6b 50%, #4ecdc4 50%)"
+                                                        title="Coral & Turquesa"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#667eea', '#764ba2')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #667eea 50%, #764ba2 50%)"
+                                                        title="Azul & Roxo"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#f093fb', '#f5576c')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #f093fb 50%, #f5576c 50%)"
+                                                        title="Rosa & Vermelho"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#4facfe', '#00f2fe')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #4facfe 50%, #00f2fe 50%)"
+                                                        title="Azul Claro"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#43e97b', '#38f9d7')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #43e97b 50%, #38f9d7 50%)"
+                                                        title="Verde & Ciano"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#fa709a', '#fee140')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #fa709a 50%, #fee140 50%)"
+                                                        title="Rosa & Amarelo"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#a8edea', '#fed6e3')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #a8edea 50%, #fed6e3 50%)"
+                                                        title="Menta & Rosa Claro"></button>
+                                                    <button onclick="aplicarPaletaSugerida('#ff9a9e', '#fecfef')"
+                                                        class="h-8 rounded-lg border border-gray-300 hover:border-gray-500 transition-colors"
+                                                        style="background: linear-gradient(45deg, #ff9a9e 50%, #fecfef 50%)"
+                                                        title="Rosa Suave"></button>
+                                                </div>
+                                            </div>
+
+                                            <!-- Preview das Cores -->
+                                            <div class="mt-4 p-4 rounded-lg border border-gray-200" id="previewCores">
+                                                <div class="text-xs text-gray-600 mb-2">Preview do Tema:</div>
+                                                <div class="h-16 rounded-lg" id="previewGradiente"
+                                                    style="background: linear-gradient(135deg, #ec4899, #a855f7)"></div>
+                                                <div class="flex justify-between mt-2 text-xs text-gray-600">
+                                                    <span id="previewPrimaria">#ec4899</span>
+                                                    <span id="previewSecundaria">#a855f7</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Transparência -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-3">Transparência dos
+                                            Cards</label>
+                                        <div class="flex items-center space-x-4">
+                                            <span class="text-sm text-gray-600">Opaco</span>
+                                            <input type="range" id="transparenciaSlider" min="0.7" max="1" step="0.05"
+                                                value="1" class="flex-1" onchange="ajustarTransparencia(this.value)">
+                                            <span class="text-sm text-gray-600">Transparente</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">Ajuste a transparência dos elementos da
+                                            interface</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Fundos e Padrões -->
+                            <div class="bg-white rounded-xl shadow-lg p-6">
+                                <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                    🖼️ Fundos e Padrões
+                                </h3>
+
+                                <div class="space-y-6">
+                                    <!-- Padrões de Fundo -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-3">Padrão de
+                                            Fundo</label>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <button onclick="aplicarPadrao('padrao')"
+                                                class="padrao-btn p-4 border-2 border-pink-300 rounded-lg hover:border-pink-500 transition-colors bg-gradient-to-br from-pink-50 to-purple-50">
+                                                <div class="text-center">
+                                                    <div class="text-sm font-medium">Padrão</div>
+                                                    <div class="text-xs text-gray-600">(Atual)</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarPadrao('solido')"
+                                                class="padrao-btn p-4 border-2 border-gray-300 rounded-lg hover:border-gray-500 transition-colors bg-gray-100">
+                                                <div class="text-center">
+                                                    <div class="text-sm font-medium">Sólido</div>
+                                                    <div class="text-xs text-gray-600">Cor única</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarPadrao('geometrico')"
+                                                class="padrao-btn p-4 border-2 border-gray-300 rounded-lg hover:border-gray-500 transition-colors"
+                                                style="background-image: repeating-linear-gradient(45deg, #f3f4f6 0px, #f3f4f6 10px, #e5e7eb 10px, #e5e7eb 20px);">
+                                                <div class="text-center">
+                                                    <div class="text-sm font-medium">Geométrico</div>
+                                                    <div class="text-xs text-gray-600">Formas</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarPadrao('ondas')"
+                                                class="padrao-btn p-4 border-2 border-gray-300 rounded-lg hover:border-gray-500 transition-colors"
+                                                style="background: radial-gradient(circle at 50% 50%, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);">
+                                                <div class="text-center">
+                                                    <div class="text-sm font-medium">Ondas</div>
+                                                    <div class="text-xs text-gray-600">Suave</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarPadrao('pontos')"
+                                                class="padrao-btn p-4 border-2 border-gray-300 rounded-lg hover:border-gray-500 transition-colors"
+                                                style="background-image: radial-gradient(circle, #e5e7eb 1px, transparent 1px); background-size: 20px 20px;">
+                                                <div class="text-center">
+                                                    <div class="text-sm font-medium">Pontos</div>
+                                                    <div class="text-xs text-gray-600">Discreto</div>
+                                                </div>
+                                            </button>
+                                            <button onclick="aplicarPadrao('listras')"
+                                                class="padrao-btn p-4 border-2 border-gray-300 rounded-lg hover:border-gray-500 transition-colors"
+                                                style="background: repeating-linear-gradient(90deg, #f3f4f6 0px, #f3f4f6 2px, #e5e7eb 2px, #e5e7eb 4px);">
+                                                <div class="text-center">
+                                                    <div class="text-sm font-medium">Listras</div>
+                                                    <div class="text-xs text-gray-600">Vertical</div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Upload de Fundo Personalizado -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Fundo
+                                            Personalizado</label>
+                                        <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-pink-400 transition-colors cursor-pointer"
+                                            onclick="document.getElementById('fundoUpload').click()">
+                                            <div class="text-2xl mb-2">📁</div>
+                                            <p class="text-sm text-gray-600">Upload de imagem de fundo</p>
+                                            <p class="text-xs text-gray-400 mt-1">JPG ou PNG (máx. 5MB)</p>
+                                            <input type="file" id="fundoUpload" accept="image/*" class="hidden"
+                                                onchange="processarFundoPersonalizado(this)">
+                                        </div>
+
+                                        <!-- Preview do Fundo -->
+                                        <div id="fundoPreview"
+                                            class="hidden mt-3 bg-gray-50 rounded-lg p-4 text-center">
+                                            <div class="text-sm text-gray-600 mb-2">Fundo personalizado ativo</div>
+                                            <button onclick="removerFundoPersonalizado()"
+                                                class="text-red-500 hover:text-red-700 text-sm">🗑️ Remover
+                                                Fundo</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ações de Personalização -->
+                        <div class="bg-white rounded-xl shadow-lg p-6">
+                            <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+                                ⚙️ Ações de Personalização
+                            </h3>
+
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <button onclick="salvarPersonalizacao()"
+                                    class="bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 flex flex-col items-center">
+                                    <div class="text-2xl mb-1">💾</div>
+                                    <span class="text-sm">Salvar</span>
+                                </button>
+
+                                <button onclick="exportarConfiguracoes()"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 flex flex-col items-center">
+                                    <div class="text-2xl mb-1">📤</div>
+                                    <span class="text-sm">Exportar</span>
+                                </button>
+
+                                <button onclick="importarConfiguracoes()"
+                                    class="bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 flex flex-col items-center">
+                                    <div class="text-2xl mb-1">📥</div>
+                                    <span class="text-sm">Importar</span>
+                                </button>
+
+                                <button onclick="restaurarPadraoPersonalizacao()"
+                                    class="bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 flex flex-col items-center">
+                                    <div class="text-2xl mb-1">🔄</div>
+                                    <span class="text-sm">Restaurar</span>
+                                </button>
+
+                                <button onclick="previewPersonalizacao()"
+                                    class="bg-indigo-500 hover:bg-indigo-600 text-white py-3 px-4 rounded-lg font-medium transition-colors duration-200 flex flex-col items-center">
+                                    <div class="text-2xl mb-1">👁️</div>
+                                    <span class="text-sm">Preview</span>
+                                </button>
+                            </div>
+
+                            <!-- Status da Personalização -->
+                            <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-semibold text-blue-800">Status da Personalização</h4>
+                                        <p id="statusPersonalizacao" class="text-blue-700 text-sm">Configurações padrão
+                                            ativas
+                                        </p>
+                                    </div>
+                                    <div class="text-blue-600">
+                                        <span id="ultimaPersonalizacao" class="text-xs">Nunca personalizado</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <!-- Modal Venda -->
+            <div id="modalVenda" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div
+                    class="bg-white rounded-lg md:rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-3xl mx-2 md:mx-4 slide-in max-h-[95vh] md:max-h-[90vh] overflow-y-auto mobile-modal">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">Novo Pedido</h3>
+                        <button onclick="closeModal('modalVenda')"
+                            class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                    </div>
+
+                    <!-- Informações do Cliente -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                        <h4 class="font-medium text-gray-800 mb-3">Informações do Cliente</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Cliente</label>
+                                <input type="text" id="clientePedido" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
+                                <input type="tel" id="telefonePedido"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Itens do Pedido -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-medium text-gray-800">Itens do Pedido</h4>
+                            <button type="button" onclick="adicionarItemPedido()"
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                                ➕ Adicionar Item
+                            </button>
+                        </div>
+
+                        <div id="itensPedido" class="space-y-4">
+                            <!-- Primeiro item -->
+                            <div class="item-pedido bg-white border border-gray-200 rounded-lg p-4">
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="font-medium text-gray-800">Item 1</span>
+                                    <button type="button" onclick="removerItemPedido(this)"
+                                        class="text-red-500 hover:text-red-700 hidden">🗑️</button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Receita</label>
+                                        <select
+                                            class="receita-select w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            onchange="atualizarCustoItem(this)" required>
+                                            <option value="">Selecione uma receita</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                                        <input type="number"
+                                            class="quantidade-item w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            min="1" step="1" value="1" onchange="calcularTotalItem(this)" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Preço Unit.
+                                            (R$)</label>
+                                        <input type="number"
+                                            class="preco-item w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            min="0" step="0.01" onchange="calcularTotalItem(this)" required>
+                                    </div>
+                                </div>
+                                <div class="mt-3 grid grid-cols-3 gap-4 text-sm">
+                                    <div class="bg-gray-50 p-2 rounded">
+                                        <span class="text-gray-600">Custo:</span>
+                                        <span class="custo-item font-medium">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-gray-50 p-2 rounded">
+                                        <span class="text-gray-600">Total:</span>
+                                        <span class="total-item font-medium">R$ 0,00</span>
+                                    </div>
+                                    <div class="bg-gray-50 p-2 rounded">
+                                        <span class="text-gray-600">Lucro:</span>
+                                        <span class="lucro-item font-medium text-green-600">R$ 0,00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resumo do Pedido -->
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                        <h4 class="font-medium text-gray-800 mb-3">Resumo do Pedido</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">Custo Total:</span>
+                                <div id="custoTotalPedido" class="font-bold text-lg">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Total do Pedido:</span>
+                                <div id="totalPedido" class="font-bold text-lg text-green-600">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Lucro Total:</span>
+                                <div id="lucroTotalPedido" class="font-bold text-lg text-purple-600">R$ 0,00</div>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Margem Média:</span>
+                                <div id="margemMediaPedido" class="font-bold text-lg text-orange-600">0%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeModal('modalVenda')"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg transition-colors duration-200">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="finalizarPedido()"
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg transition-colors duration-200">
+                            Finalizar Pedido
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Modal Importação -->
+            <div id="modalImportacao"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div
+                    class="bg-white rounded-lg md:rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-4xl mx-2 md:mx-4 slide-in max-h-[95vh] md:max-h-[90vh] overflow-y-auto mobile-modal">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">📥 Importar Produtos</h3>
+                        <button onclick="closeModal('modalImportacao')"
+                            class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                    </div>
+
+                    <!-- Passo 1: Upload do Arquivo -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-medium text-gray-800">1. Selecionar Arquivo</h4>
+                            <button onclick="baixarTemplate()"
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm">
+                                📄 Baixar Template
+                            </button>
+                        </div>
+
+                        <!-- Drag and Drop Zone -->
+                        <div id="dropZone"
+                            class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer">
+                            <div class="text-4xl mb-4">📁</div>
+                            <p class="text-lg font-medium text-gray-700 mb-2">Arraste e solte seu arquivo aqui</p>
+                            <p class="text-sm text-gray-500 mb-4">ou clique para selecionar</p>
+                            <input type="file" id="arquivoImportacao" accept=".xlsx,.xls,.csv"
+                                onchange="processarArquivo(this)" class="hidden">
+                            <button type="button" onclick="document.getElementById('arquivoImportacao').click()"
+                                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Selecionar Arquivo
+                            </button>
+                            <p class="text-xs text-gray-400 mt-2">Formatos aceitos: Excel (.xlsx, .xls) e CSV (.csv)</p>
+                        </div>
+
+                        <!-- Arquivo Selecionado -->
+                        <div id="arquivoSelecionado" class="hidden bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl">📄</div>
+                                    <div>
+                                        <p class="font-medium text-gray-800" id="nomeArquivo">arquivo.xlsx</p>
+                                        <p class="text-sm text-gray-600" id="tamanhoArquivo">125 KB</p>
+                                    </div>
+                                </div>
+                                <button onclick="removerArquivo()" class="text-red-500 hover:text-red-700 p-2">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Passo 2: Mapeamento de Campos -->
+                    <div id="secaoMapeamento" class="hidden mb-6">
+                        <h4 class="font-medium text-gray-800 mb-4">2. Mapear Campos</h4>
+                        <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                            <p class="text-sm text-gray-600 mb-3">Associe as colunas do seu arquivo aos campos do
+                                sistema:</p>
+                            <div id="mapeamentoCampos" class="space-y-3">
+                                <!-- Campos de mapeamento serão inseridos aqui -->
+                            </div>
+                        </div>
+
+                        <!-- Preview dos Dados -->
+                        <div class="bg-white border border-gray-200 rounded-lg">
+                            <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                                <h5 class="font-medium text-gray-800">Preview dos Dados</h5>
+                                <span id="contadorImportacao" class="text-sm text-gray-600">0 de 0 registros
+                                    válidos</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Nome</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Categoria</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Quantidade</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Preço</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewImportacao" class="bg-white divide-y divide-gray-200">
+                                        <!-- Preview será inserido aqui -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeModal('modalImportacao')"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg transition-colors duration-200">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="executarImportacao()"
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-lg transition-colors duration-200 opacity-50 cursor-not-allowed"
+                            disabled>
+                            Importar Produtos
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Scanner -->
+            <div id="modalScanner" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div
+                    class="bg-white rounded-lg md:rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-md mx-2 md:mx-4 slide-in">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">📷 Scanner de Código</h3>
+                        <button onclick="pararScanner()" class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                    </div>
+
+                    <!-- Área do Scanner -->
+                    <div id="scanner-container" class="relative bg-black rounded-lg overflow-hidden mb-4">
+                        <div id="interactive" class="viewport w-full h-64"></div>
+                        <div class="absolute inset-0 border-2 border-red-500 rounded-lg pointer-events-none">
+                            <div
+                                class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-32 border-2 border-red-500 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instruções -->
+                    <div class="text-center mb-4">
+                        <p class="text-sm text-gray-600">Posicione o código de barras dentro do quadrado vermelho</p>
+                        <p class="text-xs text-gray-500 mt-1">O scanner detectará automaticamente o código</p>
+                    </div>
+
+                    <!-- Resultado -->
+                    <div id="resultado-scanner" class="hidden bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-green-600">✅</span>
+                            <span class="font-medium text-green-800">Código detectado:</span>
+                            <span id="codigo-detectado" class="font-mono text-green-900"></span>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="pararScanner()"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg transition-colors duration-200">
+                            Cancelar
+                        </button>
+                        <button type="button" id="btnUsarCodigo" onclick="usarCodigoDetectado()"
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-lg transition-colors duration-200 opacity-50 cursor-not-allowed"
+                            disabled>
+                            Usar Código
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Importação de Receitas -->
+            <div id="modalImportacaoReceitas"
+                class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div
+                    class="bg-white rounded-lg md:rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-4xl mx-2 md:mx-4 slide-in max-h-[95vh] md:max-h-[90vh] overflow-y-auto mobile-modal">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-gray-800">📥 Importar Receitas</h3>
+                        <button onclick="closeModal('modalImportacaoReceitas')"
+                            class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                    </div>
+
+                    <!-- Passo 1: Upload do Arquivo -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-medium text-gray-800">1. Selecionar Arquivo</h4>
+                            <button onclick="baixarTemplateReceitas()"
+                                class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 text-sm">
+                                📄 Baixar Template
+                            </button>
+                        </div>
+
+                        <!-- Drag and Drop Zone -->
+                        <div id="dropZoneReceitas"
+                            class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-purple-400 transition-colors cursor-pointer">
+                            <div class="text-4xl mb-4">📁</div>
+                            <p class="text-lg font-medium text-gray-700 mb-2">Arraste e solte seu arquivo aqui</p>
+                            <p class="text-sm text-gray-500 mb-4">ou clique para selecionar</p>
+                            <input type="file" id="arquivoImportacaoReceitas" accept=".xlsx,.xls,.csv"
+                                onchange="processarArquivoReceitas(this)" class="hidden">
+                            <button type="button" onclick="document.getElementById('arquivoImportacaoReceitas').click()"
+                                class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200">
+                                Selecionar Arquivo
+                            </button>
+                            <p class="text-xs text-gray-400 mt-2">Formatos aceitos: Excel (.xlsx, .xls) e CSV (.csv)</p>
+                        </div>
+
+                        <!-- Arquivo Selecionado -->
+                        <div id="arquivoSelecionadoReceitas"
+                            class="hidden bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="text-2xl">📄</div>
+                                    <div>
+                                        <p class="font-medium text-gray-800" id="nomeArquivoReceitas">arquivo.xlsx</p>
+                                        <p class="text-sm text-gray-600" id="tamanhoArquivoReceitas">125 KB</p>
+                                    </div>
+                                </div>
+                                <button onclick="removerArquivoReceitas()" class="text-red-500 hover:text-red-700 p-2">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Passo 2: Mapeamento de Campos -->
+                    <div id="secaoMapeamentoReceitas" class="hidden mb-6">
+                        <h4 class="font-medium text-gray-800 mb-4">2. Mapear Campos</h4>
+                        <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                            <p class="text-sm text-gray-600 mb-3">Associe as colunas do seu arquivo aos campos do
+                                sistema:</p>
+                            <div id="mapeamentoCamposReceitas" class="space-y-3">
+                                <!-- Campos de mapeamento serão inseridos aqui -->
+                            </div>
+                        </div>
+
+                        <!-- Preview dos Dados -->
+                        <div class="bg-white border border-gray-200 rounded-lg">
+                            <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                                <h5 class="font-medium text-gray-800">Preview das Receitas</h5>
+                                <span id="contadorImportacaoReceitas" class="text-sm text-gray-600">0 de 0 registros
+                                    válidos</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Nome</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Rendimento</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Ingredientes</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Modo de Preparo</th>
+                                            <th
+                                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="previewImportacaoReceitas" class="bg-white divide-y divide-gray-200">
+                                        <!-- Preview será inserido aqui -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeModal('modalImportacaoReceitas')"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg transition-colors duration-200">
+                            Cancelar
+                        </button>
+                        <button type="button" onclick="executarImportacaoReceitas()"
+                            class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg transition-colors duration-200 opacity-50 cursor-not-allowed"
+                            disabled>
+                            Importar Receitas
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Receita -->
+            <div id="modalReceita" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div
+                    class="bg-white rounded-lg md:rounded-xl shadow-2xl p-4 md:p-6 w-full max-w-3xl mx-2 md:mx-4 slide-in max-h-[95vh] md:max-h-[90vh] overflow-y-auto mobile-modal">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 id="tituloModalReceita" class="text-xl font-bold text-gray-800">Nova Receita</h3>
+                        <button onclick="closeModal('modalReceita')"
+                            class="text-gray-400 hover:text-gray-600 text-2xl">×</button>
+                    </div>
+                    <form onsubmit="adicionarReceita(event)" class="space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nome da Receita</label>
+                                <input type="text" id="nomeReceita" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Rendimento (porções)</label>
+                                <input type="number" id="rendimentoReceita" required min="1"
+                                    onchange="calcularCustoReceita()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Ingredientes</label>
+                            <div id="ingredientesReceita" class="space-y-2">
+                                <div class="flex space-x-2 ingrediente-row">
+                                    <select
+                                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ingrediente-select"
+                                        onchange="calcularCustoReceita()">
+                                        <option value="">Selecione um ingrediente</option>
+                                    </select>
+                                    <input type="number" placeholder="Qtd" min="0.01" step="0.01"
+                                        class="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent quantidade-ingrediente"
+                                        onchange="calcularCustoReceita()">
+                                    <button type="button" onclick="removerIngrediente(this)"
+                                        class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">🗑️</button>
+                                </div>
+                            </div>
+                            <button type="button" onclick="adicionarIngrediente()"
+                                class="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg transition-colors duration-200">
+                                ➕ Adicionar Ingrediente
+                            </button>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Modo de Preparo</label>
+                            <textarea id="modoPreparoReceita" rows="4"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                placeholder="Descreva o passo a passo do preparo..."></textarea>
+                        </div>
+
+                        <!-- Cálculo de Preço -->
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <h4 class="font-semibold text-green-800 mb-4 flex items-center">
+                                💰 Cálculo de Preço de Venda
+                            </h4>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Margem de Lucro
+                                        (%)</label>
+                                    <input type="number" id="margemLucro" value="200" min="0" step="10"
+                                        onchange="calcularPrecoSugerido()"
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Preço Sugerido</label>
+                                    <input type="number" id="precoSugerido" readonly
+                                        class="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600">
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">💡 Meu Preço de
+                                    Venda</label>
+                                <input type="number" id="meuPreco" min="0" step="0.01" placeholder="Digite seu preço"
+                                    onchange="calcularLucroPersonalizado()"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            </div>
+
+                            <!-- Resumo de Custos -->
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div class="bg-white p-3 rounded border">
+                                    <div class="text-gray-600">Custo por Porção:</div>
+                                    <div id="custoPorPorcaoDisplay" class="font-bold text-lg text-gray-800">R$ 0,00
+                                    </div>
+                                </div>
+                                <div class="bg-white p-3 rounded border">
+                                    <div class="text-gray-600">Custo Total:</div>
+                                    <div id="custoTotalDisplay" class="font-bold text-lg text-gray-800">R$ 0,00</div>
+                                </div>
+                                <div class="bg-white p-3 rounded border">
+                                    <div class="text-gray-600">Lucro Sugerido:</div>
+                                    <div id="lucroSugeridoDisplay" class="font-bold text-lg text-green-600">R$ 0,00
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-3 pt-4">
+                            <button type="button" onclick="closeModal('modalReceita')"
+                                class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-lg transition-colors duration-200">
+                                Cancelar
+                            </button>
+                            <button type="submit" id="btnSalvarReceita"
+                                class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg transition-colors duration-200">
+                                Salvar Receita
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <script src="js/users.js"></script>
+            <script src="js/app.js"></script>
+            <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'98dbad57d31ae2a0',t:'MTc2MDMyNTM3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
+</body>
+
+</html>
