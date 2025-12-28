@@ -146,4 +146,4 @@ function updateUIBasedOnRole() {
 }
 
 // Executar verificação imediata (se não for importado como módulo)
-// checkAuth();
+checkAuth();

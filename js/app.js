@@ -583,14 +583,40 @@ function showSection(sectionName) {
 
     // Atualizar botões de navegação (desktop e mobile)
     const navButtons = document.querySelectorAll('.nav-btn');
+    const corPrimaria = document.getElementById('corPrimaria') ? document.getElementById('corPrimaria').value : '#ec4899';
+
     navButtons.forEach(btn => {
+        // Resetar estilos
         btn.classList.remove('bg-pink-500', 'text-white');
         btn.classList.add('text-gray-600', 'hover:bg-pink-100');
+        btn.style.backgroundColor = '';
+        btn.style.color = '';
     });
 
     // Destacar botão ativo
-    event.target.classList.remove('text-gray-600', 'hover:bg-pink-100');
-    event.target.classList.add('bg-pink-500', 'text-white');
+    let activeBtn = null;
+
+    // Tenta encontrar pelo evento
+    if (event && event.target) {
+        activeBtn = event.target.closest('.nav-btn');
+    }
+
+    // Se não encontrou pelo evento (ex: navegação manual), tenta buscar pelo onclick
+    if (!activeBtn && sectionName) {
+        // Busca botão que chama esta seção
+        activeBtn = document.querySelector(`button[onclick*="'${sectionName}'"]`);
+    }
+
+    if (activeBtn) {
+        activeBtn.classList.remove('text-gray-600', 'hover:bg-pink-100');
+        activeBtn.classList.add('bg-pink-500', 'text-white');
+
+        // Aplica cor personalizada se existir
+        if (typeof configuracoes !== 'undefined') {
+            // Re-aplica a cor atual selecionada
+            activeBtn.style.backgroundColor = corPrimaria;
+        }
+    }
 
     // Atualizar dados específicos da seção
     if (sectionName === 'dashboard') {
@@ -850,6 +876,8 @@ function limparTodosDados() {
 }
 
 // Função para adicionar item no dashboard
+let itemEditando = null;
+
 function adicionarItemDashboard(event) {
     event.preventDefault();
 
@@ -862,19 +890,39 @@ function adicionarItemDashboard(event) {
     const marca = document.getElementById('marcaItemDash').value || '';
     const codigoBarras = document.getElementById('codigoBarrasItemDash').value || '';
 
-    const novoProduto = {
-        id: proximoIdProduto++,
-        nome,
-        categoria,
-        quantidade,
-        unidade,
-        preco,
-        validade,
-        marca,
-        codigoBarras
-    };
+    if (itemEditando) {
+        // Atualizar produto existente
+        const produto = produtos.find(p => p.id === itemEditando);
+        if (produto) {
+            produto.nome = nome;
+            produto.categoria = categoria;
+            produto.quantidade = quantidade;
+            produto.unidade = unidade;
+            produto.preco = preco;
+            produto.validade = validade;
+            produto.marca = marca;
+            produto.codigoBarras = codigoBarras;
 
-    produtos.push(novoProduto);
+            alert('✅ Item atualizado com sucesso!');
+        }
+        itemEditando = null;
+        document.querySelector('#dashboard form button[type="submit"]').textContent = 'Adicionar Item';
+    } else {
+        // Criar novo produto
+        const novoProduto = {
+            id: proximoIdProduto++,
+            nome,
+            categoria,
+            quantidade,
+            unidade,
+            preco,
+            validade,
+            marca,
+            codigoBarras
+        };
+        produtos.push(novoProduto);
+        alert('✅ Item adicionado com sucesso!');
+    }
 
     // Salvar dados automaticamente
     salvarDados();
@@ -884,9 +932,28 @@ function adicionarItemDashboard(event) {
 
     // Atualizar dashboard
     atualizarDashboard();
+}
 
-    // Mostrar mensagem de sucesso
-    alert('✅ Item adicionado com sucesso!');
+function editarProduto(id) {
+    const produto = produtos.find(p => p.id === id);
+    if (!produto) return;
+
+    // Preencher formulário
+    document.getElementById('nomeItemDash').value = produto.nome;
+    document.getElementById('categoriaItemDash').value = produto.categoria;
+    document.getElementById('quantidadeItemDash').value = produto.quantidade;
+    document.getElementById('unidadeItemDash').value = produto.unidade;
+    document.getElementById('precoItemDash').value = produto.preco;
+    if (produto.validade) document.getElementById('validadeItemDash').value = produto.validade;
+    if (produto.marca) document.getElementById('marcaItemDash').value = produto.marca;
+    if (produto.codigoBarras) document.getElementById('codigoBarrasItemDash').value = produto.codigoBarras;
+
+    // Ajustar estado para edição
+    itemEditando = id;
+    document.querySelector('#dashboard form button[type="submit"]').textContent = 'Atualizar Item';
+
+    // Rolar para o formulário
+    document.getElementById('nomeItemDash').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Função para atualizar dashboard
@@ -1532,6 +1599,92 @@ function atualizarReceitasDisponiveis() {
     });
 }
 
+// Variáveis de Vendas
+let tipoVendaAtual = 'produto';
+let vendaEditando = null;
+
+// Função para alternar tipo de venda
+function toggleTipoVenda(tipo) {
+    tipoVendaAtual = tipo;
+
+    const modoProduto = document.getElementById('vendaModoProduto');
+    const modoPersonalizado = document.getElementById('vendaModoPersonalizado');
+
+    if (tipo === 'produto') {
+        modoProduto.classList.remove('hidden');
+        modoPersonalizado.classList.add('hidden');
+    } else {
+        modoProduto.classList.add('hidden');
+        modoPersonalizado.classList.remove('hidden');
+    }
+}
+
+// Função para calcular total da venda personalizada
+function calcularTotalCustom() {
+    const qtd = parseFloat(document.getElementById('quantidadeCustom').value) || 0;
+    const unitario = parseFloat(document.getElementById('valorUnitarioCustom').value) || 0;
+    const total = qtd * unitario;
+
+    document.getElementById('valorVendaCustom').value = total.toFixed(2);
+}
+
+// Função para abrir modal de nova venda e resetar formulário
+function abrirModalNovaVenda() {
+    // Resetar estado de edição
+    vendaEditando = null;
+    const btnSubmit = document.getElementById('btnFinalizarPedido');
+    if (btnSubmit) btnSubmit.textContent = 'Finalizar Pedido';
+    const modalTitle = document.querySelector('#modalVenda h3');
+    if (modalTitle) modalTitle.textContent = 'Nova Venda';
+
+    // Resetar tipo de venda
+    tipoVendaAtual = 'produto';
+    const radioProduto = document.querySelector('input[name="tipoVenda"][value="produto"]');
+    if (radioProduto) radioProduto.checked = true;
+    toggleTipoVenda('produto');
+
+    // Limpar campos comuns
+    document.getElementById('clientePedido').value = '';
+    document.getElementById('telefonePedido').value = '';
+    // Definir data como hoje por padrão
+    const hoje = new Date();
+    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    if (document.getElementById('dataPedido')) document.getElementById('dataPedido').value = hojeStr;
+
+    // Limpar campos de produto (receita)
+    const itensContainer = document.getElementById('itensPedido');
+    if (itensContainer) {
+        itensContainer.innerHTML = '';
+        adicionarItemPedido(); // Adiciona um item vazio inicial
+    }
+
+    // Limpar totais
+    if (document.getElementById('custoTotalPedido')) document.getElementById('custoTotalPedido').textContent = 'R$ 0,00';
+    if (document.getElementById('totalPedido')) document.getElementById('totalPedido').textContent = 'R$ 0,00';
+    if (document.getElementById('lucroTotalPedido')) document.getElementById('lucroTotalPedido').textContent = 'R$ 0,00';
+    if (document.getElementById('margemMediaPedido')) document.getElementById('margemMediaPedido').textContent = '0%';
+
+    // Limpar campos personalizados
+    if (document.getElementById('codigoProdutoCustom')) document.getElementById('codigoProdutoCustom').value = '';
+    if (document.getElementById('nomeProdutoCustom')) document.getElementById('nomeProdutoCustom').value = '';
+    if (document.getElementById('quantidadeCustom')) document.getElementById('quantidadeCustom').value = '1';
+    if (document.getElementById('valorUnitarioCustom')) document.getElementById('valorUnitarioCustom').value = '';
+    if (document.getElementById('valorVendaCustom')) document.getElementById('valorVendaCustom').value = '';
+    if (document.getElementById('pagamentoCustom')) document.getElementById('pagamentoCustom').value = '';
+    if (document.getElementById('enderecoCustom')) document.getElementById('enderecoCustom').value = '';
+
+    // Abrir modal
+    if (typeof openModal === 'function') {
+        openModal('modalVenda');
+    } else {
+        const modal = document.getElementById('modalVenda');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+}
+
 // Função para adicionar item ao pedido
 function adicionarItemPedido() {
     const container = document.getElementById('itensPedido');
@@ -1677,93 +1830,276 @@ function calcularTotalPedido() {
     document.getElementById('margemMediaPedido').textContent = `${margemMedia.toFixed(1)}%`;
 }
 
-// Função para finalizar pedido
+// Função para editar venda existente
+function editarVenda(id) {
+    const idNum = Number(id);
+    const venda = vendas.find(v => v.id == idNum);
+    if (!venda) {
+        // Tenta achar sem conversão por segurança
+        const fallbackVenda = vendas.find(v => v.id == id);
+        if (!fallbackVenda) return;
+        vendaEditando = fallbackVenda.id;
+    } else {
+        vendaEditando = idNum;
+    }
+
+    // Atualizar UI do Modal
+    const btnSubmit = document.getElementById('btnFinalizarPedido');
+    if (btnSubmit) btnSubmit.textContent = 'Atualizar Venda';
+    const modalTitle = document.querySelector('#modalVenda h3');
+    if (modalTitle) modalTitle.textContent = 'Editar Venda';
+
+    // Abrir modal (sem resetar)
+    if (typeof openModal === 'function') {
+        openModal('modalVenda');
+    } else {
+        const modal = document.getElementById('modalVenda');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    // Preencher campos comuns
+    document.getElementById('clientePedido').value = venda.cliente;
+    document.getElementById('telefonePedido').value = venda.telefone || '';
+    if (venda.data) {
+        // Garantir formato YYYY-MM-DD
+        const dataFormatada = venda.data.split('T')[0];
+        document.getElementById('dataPedido').value = dataFormatada;
+    }
+
+    // Configurar Tipo e Campos Específicos
+    tipoVendaAtual = venda.tipo || 'produto';
+    toggleTipoVenda(tipoVendaAtual);
+
+    // Setar radio button correto
+    const radio = document.querySelector(`input[name="tipoVenda"][value="${tipoVendaAtual}"]`);
+    if (radio) radio.checked = true;
+
+    if (tipoVendaAtual === 'produto') {
+        const itensContainer = document.getElementById('itensPedido');
+        itensContainer.innerHTML = ''; // Limpar atuais
+
+        // Recriar itens
+        venda.itens.forEach(item => {
+            adicionarItemPedido();
+            const lastItem = itensContainer.lastElementChild;
+
+            // Encontrar receita correspondente pelo nome
+            const receitaObj = receitas.find(r => r.nome === item.receita);
+            const select = lastItem.querySelector('.receita-select');
+
+            if (receitaObj) {
+                select.value = receitaObj.id;
+            } else {
+                // Adicionar opção temporária se não encontrar (para visualização)
+                const opt = document.createElement('option');
+                opt.value = -1; // ID invaalido
+                opt.textContent = `${item.receita} (Arquivo)`;
+                opt.selected = true;
+                select.appendChild(opt);
+            }
+
+            lastItem.querySelector('.quantidade-item').value = item.quantidade;
+            lastItem.querySelector('.preco-item').value = item.preco;
+
+            // Calcular totais da linha
+            calcularTotalItem(lastItem.querySelector('.preco-item'));
+        });
+
+        // Recalcular total geral
+        calcularTotalPedido();
+
+    } else {
+        // Venda Personalizada
+        const item = venda.itens[0]; // Venda personalizada tem 1 item
+        if (item) {
+            document.getElementById('codigoProdutoCustom').value = item.codigo || '';
+            document.getElementById('nomeProdutoCustom').value = item.receita || ''; // receita guarda o nome
+            document.getElementById('quantidadeCustom').value = item.quantidade || 1;
+            document.getElementById('valorUnitarioCustom').value = item.preco || 0;
+            document.getElementById('valorVendaCustom').value = item.total || 0;
+        }
+        document.getElementById('pagamentoCustom').value = venda.pagamento || '';
+        document.getElementById('enderecoCustom').value = venda.endereco || '';
+    }
+}
+
+// Função para finalizar (ou atualizar) pedido
 function finalizarPedido() {
     const cliente = document.getElementById('clientePedido').value;
     const telefone = document.getElementById('telefonePedido').value;
+    const dataVendaInput = document.getElementById('dataPedido').value;
+    const hoje = new Date();
+    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    const dataVenda = dataVendaInput || hojeStr;
 
     if (!cliente) {
-        alert('⚠️ Por favor, informe o nome do cliente!');
+        showCustomAlert('⚠️ Atenção', 'Por favor, informe o nome do cliente!');
         return;
     }
 
-    const items = document.querySelectorAll('.item-pedido');
-    const itensPedido = [];
+    let novaVenda;
 
-    let valid = true;
-    items.forEach(item => {
-        const receitaSelect = item.querySelector('.receita-select');
-        const quantidade = parseFloat(item.querySelector('.quantidade-item').value);
-        const preco = parseFloat(item.querySelector('.preco-item').value);
+    if (tipoVendaAtual === 'produto') {
+        // Lógica de Venda de Produtos (Receitas)
+        const items = document.querySelectorAll('.item-pedido');
+        const itensPedido = [];
 
-        if (!receitaSelect.value || !quantidade || !preco) {
-            valid = false;
+        let valid = true;
+        items.forEach(item => {
+            const receitaSelect = item.querySelector('.receita-select');
+            const quantidade = parseFloat(item.querySelector('.quantidade-item').value);
+            const preco = parseFloat(item.querySelector('.preco-item').value);
+
+            if (!receitaSelect.value || !quantidade || !preco) {
+                valid = false;
+                return;
+            }
+
+            let nomeReceita = '';
+            let custoReceita = 0;
+
+            if (receitaSelect.value === '-1') {
+                // Item arquivado/importado
+                nomeReceita = receitaSelect.options[receitaSelect.selectedIndex].text.replace(' (Arquivo)', '');
+                custoReceita = 0; // Assume 0 ou mantem antigo se editar lógica mais fundo
+            } else {
+                const receita = receitas.find(r => r.id === parseInt(receitaSelect.value));
+                nomeReceita = receita.nome;
+                custoReceita = receita.custoPorPorcao;
+            }
+
+            itensPedido.push({
+                receita: nomeReceita,
+                quantidade,
+                preco,
+                custo: custoReceita,
+                total: quantidade * preco,
+                lucro: (quantidade * preco) - (quantidade * custoReceita)
+            });
+        });
+
+        if (!valid) {
+            showCustomAlert('⚠️ Atenção', 'Por favor, preencha todos os campos dos itens!');
             return;
         }
 
-        const receita = receitas.find(r => r.id === parseInt(receitaSelect.value));
-        itensPedido.push({
-            receita: receita.nome,
-            quantidade,
-            preco,
-            custo: receita.custoPorPorcao,
-            total: quantidade * preco,
-            lucro: (quantidade * preco) - (quantidade * receita.custoPorPorcao)
-        });
-    });
+        const custoTotal = parseFloat(document.getElementById('custoTotalPedido').textContent.replace('R$ ', '').replace('.', '').replace(',', '.'));
+        const totalPedido = parseFloat(document.getElementById('totalPedido').textContent.replace('R$ ', '').replace('.', '').replace(',', '.'));
+        const lucroTotal = parseFloat(document.getElementById('lucroTotalPedido').textContent.replace('R$ ', '').replace('.', '').replace(',', '.'));
+        const margemMediaStr = document.getElementById('margemMediaPedido').textContent.replace('%', '');
+        const margemMedia = parseFloat(margemMediaStr) || 0;
 
-    if (!valid) {
-        alert('⚠️ Por favor, preencha todos os campos dos itens!');
-        return;
+        novaVenda = {
+            id: vendaEditando !== null ? vendaEditando : proximoIdVenda++, // Usa ID existente ou novo
+            data: dataVenda,
+            cliente,
+            telefone,
+            itens: itensPedido,
+            custoTotal,
+            totalPedido,
+            lucroTotal,
+            margemMedia,
+            tipo: 'produto'
+        };
+
+    } else {
+        // Lógica de Venda Personalizada
+        const codigo = document.getElementById('codigoProdutoCustom').value;
+        const nomeProduto = document.getElementById('nomeProdutoCustom').value;
+        const quantidade = parseFloat(document.getElementById('quantidadeCustom').value) || 1;
+        const valorUnitario = parseFloat(document.getElementById('valorUnitarioCustom').value) || 0;
+        const valorVenda = parseFloat(document.getElementById('valorVendaCustom').value);
+        const pagamento = document.getElementById('pagamentoCustom').value;
+        const endereco = document.getElementById('enderecoCustom').value;
+
+        if (!nomeProduto || !valorVenda || !pagamento) {
+            showCustomAlert('⚠️ Atenção', 'Preencha Nome do Produto, Valor Unitário e Forma de Pagamento!');
+            return;
+        }
+
+        novaVenda = {
+            id: vendaEditando !== null ? vendaEditando : proximoIdVenda++,
+            data: dataVenda,
+            cliente,
+            telefone,
+            endereco,
+            pagamento,
+            itens: [{
+                receita: nomeProduto, // Usando campo 'receita' para manter compatibilidade com tabela
+                codigo: codigo,
+                quantidade: quantidade,
+                preco: valorUnitario, // Preço Unitário
+                custo: 0,
+                total: valorVenda,    // Total calculado
+                lucro: valorVenda
+            }],
+            custoTotal: 0,
+            totalPedido: valorVenda,
+            lucroTotal: valorVenda,
+            margemMedia: 100,
+            tipo: 'personalizada'
+        };
     }
 
-    const custoTotal = parseFloat(document.getElementById('custoTotalPedido').textContent.replace('R$ ', ''));
-    const totalPedido = parseFloat(document.getElementById('totalPedido').textContent.replace('R$ ', ''));
-    const lucroTotal = parseFloat(document.getElementById('lucroTotalPedido').textContent.replace('R$ ', ''));
-    const margemMedia = parseFloat(document.getElementById('margemMediaPedido').textContent.replace('%', ''));
-
-    const novaVenda = {
-        id: proximoIdVenda++,
-        data: new Date().toISOString().split('T')[0],
-        cliente,
-        telefone,
-        itens: itensPedido,
-        custoTotal,
-        totalPedido,
-        lucroTotal,
-        margemMedia
-    };
-
-    vendas.push(novaVenda);
+    if (vendaEditando !== null) {
+        // Atualizar existente na lista
+        const index = vendas.findIndex(v => v.id == vendaEditando);
+        if (index !== -1) {
+            vendas[index] = novaVenda;
+        } else {
+            vendas.push(novaVenda);
+        }
+        showCustomAlert('✅ Sucesso', 'Venda atualizada com sucesso!');
+        vendaEditando = null;
+    } else {
+        // Adicionar nova
+        vendas.push(novaVenda);
+        showCustomAlert('✅ Sucesso', 'Pedido finalizado com sucesso!');
+    }
 
     // Salvar dados automaticamente
     salvarDados();
 
     closeModal('modalVenda');
-    alert('✅ Pedido finalizado com sucesso!');
 
-    // Atualizar vendas se estivermos na seção de vendas
-    if (!document.getElementById('vendas').classList.contains('hidden')) {
-        atualizarVendas();
+    // Limpar campos customizados (reset manual para garantir)
+    document.getElementById('codigoProdutoCustom').value = '';
+    document.getElementById('nomeProdutoCustom').value = '';
+    document.getElementById('valorVendaCustom').value = '';
+    document.getElementById('pagamentoCustom').value = '';
+    document.getElementById('enderecoCustom').value = '';
+
+    // Atualizar tudo para garantir consistência
+    atualizarVendas();
+    if (typeof atualizarDashboard === 'function') {
+        atualizarDashboard();
     }
 }
 
 // Função para atualizar vendas
 function atualizarVendas() {
     // Calcular estatísticas
-    const hoje = new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const hoje = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const mesAtual = new Date().getMonth();
     const anoAtual = new Date().getFullYear();
 
     const vendasHoje = vendas.filter(v => v.data === hoje).reduce((sum, v) => sum + v.totalPedido, 0);
     const vendasMes = vendas.filter(v => {
-        const dataVenda = new Date(v.data);
-        return dataVenda.getMonth() === mesAtual && dataVenda.getFullYear() === anoAtual;
+        const parts = v.data.split('-');
+        const vMes = parseInt(parts[1]) - 1;
+        const vAno = parseInt(parts[0]);
+        return vMes === mesAtual && vAno === anoAtual;
     }).reduce((sum, v) => sum + v.totalPedido, 0);
 
     const lucroMes = vendas.filter(v => {
-        const dataVenda = new Date(v.data);
-        return dataVenda.getMonth() === mesAtual && dataVenda.getFullYear() === anoAtual;
+        const parts = v.data.split('-');
+        const vMes = parseInt(parts[1]) - 1;
+        const vAno = parseInt(parts[0]);
+        return vMes === mesAtual && vAno === anoAtual;
     }).reduce((sum, v) => sum + v.lucroTotal, 0);
 
     const margemMedia = vendas.length > 0 ?
@@ -1780,6 +2116,63 @@ function atualizarVendas() {
 
     // Aplicar filtros e atualizar tabela
     filtrarVendas();
+
+    // Atualizar lista de clientes (autocomplete)
+    atualizarListaClientes();
+}
+
+// Função para atualizar lista de clientes (Autocomplete)
+function atualizarListaClientes() {
+    const datalist = document.getElementById('listaClientes');
+    if (!datalist) return;
+
+    datalist.innerHTML = '';
+
+    // Extrair clientes únicos
+    const clientesUnicos = [...new Set(vendas.map(v => v.cliente))].sort();
+
+    clientesUnicos.forEach(cliente => {
+        const option = document.createElement('option');
+        option.value = cliente;
+        datalist.appendChild(option);
+    });
+}
+
+// Função para ver histórico do cliente
+function verHistoricoCliente() {
+    const nomeCliente = document.getElementById('clientePedido').value;
+    if (!nomeCliente) {
+        showCustomAlert('⚠️ Cliente', 'Digite o nome do cliente primeiro.');
+        return;
+    }
+
+    const historico = vendas.filter(v => v.cliente.toLowerCase() === nomeCliente.toLowerCase());
+
+    if (historico.length === 0) {
+        showCustomAlert('ℹ️ Histórico', `Nenhuma compra encontrada para "${nomeCliente}".`);
+        return;
+    }
+
+    let msg = `📜 Histórico de: ${historico[0].cliente}\n\n`;
+    let totalGasto = 0;
+
+    historico.sort((a, b) => new Date(b.data) - new Date(a.data)); // Mais recente primeiro
+
+    historico.forEach(v => {
+        const data = new Date(v.data).toLocaleDateString('pt-BR');
+        msg += `📅 ${data} - R$ ${v.totalPedido.toFixed(2)}\n`;
+        v.itens.forEach(item => {
+            msg += `   • ${item.quantidade}x ${item.receita}\n`;
+        });
+        msg += '-------------------\n';
+        totalGasto += v.totalPedido;
+    });
+
+    msg += `\n💰 Total Gasto: R$ ${totalGasto.toFixed(2)}`;
+    msg += `\n🛍️ Total Compras: ${historico.length}`;
+
+    // Usar alert simples por enquanto, ideal seria um modal próprio
+    alert(msg);
 }
 
 // Função para atualizar gráficos
@@ -1788,6 +2181,59 @@ function atualizarGraficos() {
     atualizarGraficoVendasLucro();
     atualizarProdutosMaisLucrativos();
     atualizarGraficoDistribuicaoMargem();
+    atualizarTopClientes();
+    atualizarProdutosMaisVendidos();
+}
+
+// Top Clientes Frequentes
+function atualizarTopClientes() {
+    const container = document.getElementById('topClientesChart');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (vendas.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhuma venda registrada.</p>';
+        return;
+    }
+
+    // Contar frequência
+    const frequencia = {};
+    const totalGasto = {};
+
+    vendas.forEach(v => {
+        const nome = v.cliente;
+        frequencia[nome] = (frequencia[nome] || 0) + 1;
+        totalGasto[nome] = (totalGasto[nome] || 0) + v.totalPedido;
+    });
+
+    // Ordenar por frequência
+    const topClientes = Object.entries(frequencia)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5); // Top 5
+
+    const maxFreq = topClientes[0][1];
+
+    topClientes.forEach(([cliente, freq], index) => {
+        const porcentagem = (freq / maxFreq) * 100;
+        const gasto = totalGasto[cliente];
+
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+        item.innerHTML = `
+            <div class="flex-1">
+                <div class="flex justify-between mb-1">
+                    <span class="font-medium text-gray-800">${index + 1}. ${cliente}</span>
+                    <span class="text-xs text-gray-500">${freq} compras</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div class="bg-blue-500 h-2 rounded-full" style="width: ${porcentagem}%"></div>
+                </div>
+                <div class="text-xs text-gray-500 text-right">Total: R$ ${gasto.toFixed(2)}</div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }
 
 // Gráfico de Evolução do Lucro com filtros
@@ -1812,7 +2258,7 @@ function atualizarGraficoEvolucaoLucro() {
     for (let i = diasFiltro - 1; i >= 0; i--) {
         const data = new Date(hoje);
         data.setDate(data.getDate() - i);
-        const dataStr = data.toISOString().split('T')[0];
+        const dataStr = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}-${String(data.getDate()).padStart(2, '0')}`;
 
         const vendasDia = vendas.filter(v => v.data === dataStr);
 
@@ -1922,17 +2368,19 @@ function atualizarGraficoVendasLucro() {
 
         const vendasMes = vendas
             .filter(v => {
-                const dataVenda = new Date(v.data);
-                return dataVenda.getMonth() === data.getMonth() &&
-                    dataVenda.getFullYear() === data.getFullYear();
+                const parts = v.data.split('-');
+                const vMes = parseInt(parts[1]) - 1;
+                const vAno = parseInt(parts[0]);
+                return vMes === data.getMonth() && vAno === data.getFullYear();
             })
             .reduce((sum, v) => sum + v.totalPedido, 0);
 
         const lucroMes = vendas
             .filter(v => {
-                const dataVenda = new Date(v.data);
-                return dataVenda.getMonth() === data.getMonth() &&
-                    dataVenda.getFullYear() === data.getFullYear();
+                const parts = v.data.split('-');
+                const vMes = parseInt(parts[1]) - 1;
+                const vAno = parseInt(parts[0]);
+                return vMes === data.getMonth() && vAno === data.getFullYear();
             })
             .reduce((sum, v) => sum + v.lucroTotal, 0);
 
@@ -1978,6 +2426,7 @@ function atualizarGraficoVendasLucro() {
 // Produtos Mais Lucrativos
 function atualizarProdutosMaisLucrativos() {
     const container = document.getElementById('produtosMaisLucrativos');
+    if (!container) return;
     container.innerHTML = '';
 
     // Calcular lucro por produto
@@ -2010,17 +2459,75 @@ function atualizarProdutosMaisLucrativos() {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
         item.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <div class="text-lg">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}</div>
-                        <div>
-                            <div class="font-medium text-gray-800">${produto}</div>
-                            <div class="text-sm text-gray-600">R$ ${lucro.toFixed(2)} em lucro</div>
-                        </div>
-                    </div>
-                    <div class="w-20 bg-gray-200 rounded-full h-2">
-                        <div class="bg-green-500 h-2 rounded-full" style="width: ${porcentagem}%"></div>
-                    </div>
-                `;
+            <div class="flex items-center space-x-3">
+                <div class="text-lg">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}</div>
+                <div>
+                    <div class="font-medium text-gray-800">${produto}</div>
+                    <div class="text-xs text-gray-500">R$ ${lucro.toFixed(2)} acumulado</div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="font-bold text-green-600">R$ ${lucro.toFixed(2)}</div>
+                <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div class="bg-green-500 h-1.5 rounded-full" style="width: ${porcentagem}%"></div>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Produtos Mais Vendidos
+function atualizarProdutosMaisVendidos() {
+    const container = document.getElementById('produtosMaisVendidos');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // Calcular quantidade por produto
+    const qtdsPorProduto = {};
+
+    vendas.forEach(venda => {
+        venda.itens.forEach(item => {
+            if (!qtdsPorProduto[item.receita]) {
+                qtdsPorProduto[item.receita] = 0;
+            }
+            qtdsPorProduto[item.receita] += item.quantidade;
+        });
+    });
+
+    // Ordenar por quantidade
+    const produtosOrdenados = Object.entries(qtdsPorProduto)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
+
+    if (produtosOrdenados.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center">Nenhuma venda registrada ainda</p>';
+        return;
+    }
+
+    const maxQtd = produtosOrdenados[0][1];
+
+    produtosOrdenados.forEach(([produto, qtd], index) => {
+        const porcentagem = (qtd / maxQtd) * 100;
+
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+        item.innerHTML = `
+            <div class="flex items-center space-x-3">
+                <div class="text-lg">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}</div>
+                <div>
+                    <div class="font-medium text-gray-800">${produto}</div>
+                    <div class="text-xs text-gray-500">${qtd} unidades vendidas</div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="font-bold text-blue-600">${qtd} un</div>
+                <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div class="bg-blue-500 h-1.5 rounded-full" style="width: ${porcentagem}%"></div>
+                </div>
+            </div>
+        `;
         container.appendChild(item);
     });
 }
@@ -2107,21 +2614,27 @@ function filtrarVendas() {
 
             switch (filtroPeriodo) {
                 case 'hoje':
-                    matchPeriodo = venda.data === hoje.toISOString().split('T')[0];
+                    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+                    matchPeriodo = venda.data === hojeStr;
                     break;
                 case 'semana':
                     const inicioSemana = new Date(hoje);
                     inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-                    matchPeriodo = dataVenda >= inicioSemana;
+                    inicioSemana.setHours(0, 0, 0, 0);
+                    const dataVendaLocal = new Date(venda.data + 'T00:00:00');
+                    matchPeriodo = dataVendaLocal >= inicioSemana;
                     break;
                 case 'mes':
-                    matchPeriodo = dataVenda.getMonth() === hoje.getMonth() &&
-                        dataVenda.getFullYear() === hoje.getFullYear();
+                    const parts = venda.data.split('-');
+                    matchPeriodo = (parseInt(parts[1]) - 1) === hoje.getMonth() &&
+                        parseInt(parts[0]) === hoje.getFullYear();
                     break;
                 case 'trimestre':
                     const inicioTrimestre = new Date(hoje);
                     inicioTrimestre.setMonth(hoje.getMonth() - 3);
-                    matchPeriodo = dataVenda >= inicioTrimestre;
+                    inicioTrimestre.setHours(0, 0, 0, 0);
+                    const dataVendaLocalTrim = new Date(venda.data + 'T00:00:00');
+                    matchPeriodo = dataVendaLocalTrim >= inicioTrimestre;
                     break;
             }
         }
@@ -2149,9 +2662,9 @@ function filtrarVendas() {
     vendasFiltradas.sort((a, b) => {
         switch (ordenarPor) {
             case 'data':
-                return new Date(a.data) - new Date(b.data);
+                return a.data.localeCompare(b.data);
             case 'data-desc':
-                return new Date(b.data) - new Date(a.data);
+                return b.data.localeCompare(a.data);
             case 'cliente':
                 return a.cliente.localeCompare(b.cliente);
             case 'cliente-desc':
@@ -2204,7 +2717,7 @@ function atualizarTabelaVendas() {
                     <td class="px-6 py-4 whitespace-nowrap">
                         <input type="checkbox" class="checkbox-produto venda-checkbox" data-venda-id="${venda.id}" onchange="atualizarSelecaoVendas()">
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(venda.data).toLocaleDateString('pt-BR')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${venda.data.split('-').reverse().join('/')}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium text-gray-900">${venda.cliente}</div>
                         <div class="text-sm text-gray-500">${venda.telefone || 'Sem telefone'}</div>
@@ -2214,8 +2727,9 @@ function atualizarTabelaVendas() {
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-600">R$ ${venda.lucroTotal.toFixed(2)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium ${margemClass}">${venda.margemMedia.toFixed(1)}%</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button onclick="verDetalhesVenda(${venda.id})" class="text-blue-600 hover:text-blue-900 mr-3">👁️</button>
-                        <button onclick="excluirVenda(${venda.id})" class="text-red-600 hover:text-red-900">🗑️</button>
+                        <button onclick="editarVenda(${venda.id})" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Editar">✏️</button>
+                        <button onclick="verDetalhesVenda(${venda.id})" class="text-blue-600 hover:text-blue-900 mr-2" title="Ver Detalhes">👁️</button>
+                        <button onclick="excluirVenda(${venda.id})" class="text-red-600 hover:text-red-900" title="Excluir">🗑️</button>
                     </td>
                 `;
         tbody.appendChild(row);
@@ -2482,7 +2996,7 @@ function exportarVendasPDF() {
             yPos = 20;
         }
 
-        doc.text(new Date(venda.data).toLocaleDateString('pt-BR'), 20, yPos);
+        doc.text(venda.data.split('-').reverse().join('/'), 20, yPos);
         doc.text(venda.cliente.substring(0, 20), 45, yPos);
         doc.text(`R$ ${venda.totalPedido.toFixed(2)}`, 100, yPos);
         doc.text(`R$ ${venda.lucroTotal.toFixed(2)}`, 130, yPos);
@@ -3589,7 +4103,7 @@ function adicionarCategoria() {
         return;
     }
 
-    if (categorias.includes(nome)) {
+    if (categorias.some(c => c.toLowerCase() === nome.toLowerCase())) {
         alert('⚠️ Esta categoria já existe!');
         return;
     }
@@ -4144,12 +4658,7 @@ function importarCargaRapida() {
                 atualizarDashboard();
 
                 // Mostrar resultado
-                alert(
-                    `✅ Carga "${cargaSelecionada.nome}" importada com sucesso!\n\n` +
-                    `📦 ${adicionados} novos produtos adicionados\n` +
-                    `🔄 ${atualizados} produtos existentes atualizados\n\n` +
-                    `Total processado: ${adicionados + atualizados} itens`
-                );
+                alert(`✅ Importação Concluída!\n🆕 Novos: ${adicionados}\n🔄 Existentes (ignorados): ${atualizados}`);
             }
         } else {
             alert('❌ Opção inválida!');
@@ -5282,14 +5791,14 @@ document.addEventListener('click', function (event) {
     const dropdownAlertas = document.getElementById('dropdownAlertas');
     const botaoAlertas = event.target.closest('button[onclick="toggleAlertas()"]');
 
-    if (!botaoAlertas && !dropdownAlertas.contains(event.target)) {
+    if (dropdownAlertas && !botaoAlertas && !dropdownAlertas.contains(event.target)) {
         dropdownAlertas.classList.add('hidden');
     }
 
     const exportMenu = document.getElementById('exportMenu');
     const exportButton = event.target.closest('.mobile-export');
 
-    if (!exportButton && !exportMenu.contains(event.target)) {
+    if (exportMenu && !exportButton && !exportMenu.contains(event.target)) {
         exportMenu.classList.add('hidden');
     }
 
@@ -5297,7 +5806,7 @@ document.addEventListener('click', function (event) {
     const configMenu = document.getElementById('configMenu');
     const configButton = event.target.closest('button[onclick="toggleConfigMenu()"]');
 
-    if (!configButton && !configMenu.contains(event.target)) {
+    if (configMenu && !configButton && !configMenu.contains(event.target)) {
         configMenu.classList.add('hidden');
     }
 
@@ -5305,7 +5814,7 @@ document.addEventListener('click', function (event) {
     const mobileConfigMenu = document.getElementById('mobileConfigMenu');
     const mobileConfigButton = event.target.closest('button[onclick="toggleMobileConfigMenu()"]');
 
-    if (!mobileConfigButton && !mobileConfigMenu.contains(event.target)) {
+    if (mobileConfigMenu && !mobileConfigButton && !mobileConfigMenu.contains(event.target)) {
         mobileConfigMenu.classList.add('hidden');
     }
 });
@@ -5313,20 +5822,23 @@ document.addEventListener('click', function (event) {
 // Toggle Sidebar Function
 function toggleSidebar() {
     const sidebar = document.getElementById('desktopSidebar');
-    if (sidebar.classList.contains('-translate-x-full') || sidebar.style.width === '0px') {
-        // Open sidebar
-        sidebar.classList.remove('-translate-x-full');
-        sidebar.classList.remove('hidden');
-        sidebar.style.width = '256px'; // w-64
-        sidebar.classList.add('md:flex');
+    const sidebarTitle = document.getElementById('sidebarTitle');
+    const navTexts = document.querySelectorAll('.nav-text');
+    const isCollapsed = sidebar.classList.toggle('w-20');
+
+    // Toggle width classes
+    if (isCollapsed) {
+        sidebar.classList.remove('w-64');
+        sidebarTitle.classList.add('hidden');
+        navTexts.forEach(text => text.classList.add('hidden'));
     } else {
-        // Close sidebar
-        sidebar.classList.add('-translate-x-full');
-        // sidebar.classList.add('hidden'); // Optional: keep it in DOM but moved
-        sidebar.style.width = '0px';
-        sidebar.classList.remove('md:flex');
-        sidebar.classList.add('hidden'); // Hide completely to remove space
+        sidebar.classList.add('w-64');
+        sidebarTitle.classList.remove('hidden');
+        navTexts.forEach(text => text.classList.remove('hidden'));
     }
+
+    // Update time immediately to adapt format
+    updateTime();
 }
 
 // Funções de envio manual de alertas
@@ -5701,9 +6213,235 @@ function updateTime() {
     const dateString = now.toLocaleDateString('pt-BR');
 
     const sidebarTime = document.getElementById('sidebar-time');
+    const sidebar = document.getElementById('desktopSidebar');
+
     if (sidebarTime) {
-        sidebarTime.textContent = `${dateString} - ${timeString}`;
+        // Check if sidebar is collapsed (w-20 class present)
+        const isCollapsed = sidebar && sidebar.classList.contains('w-20');
+
+        if (isCollapsed) {
+            // Minimized: Show only Time or Date/Time in stacked small font?
+            // User asked to adapt. Showing just time is cleanest for 80px width
+            sidebarTime.innerHTML = `<div class="text-center"><div>${timeString}</div><div class="text-[10px]">${dateString}</div></div>`;
+        } else {
+            // Expanded: Full line
+            sidebarTime.textContent = `${dateString} - ${timeString}`;
+        }
     }
+}
+
+// Função Adicionar Item Cadastro (Estoque)
+function adicionarItemCadastro(event) {
+    event.preventDefault();
+
+    const nome = document.getElementById('nomeItemCadastro').value;
+    const categoria = document.getElementById('categoriaItemCadastro').value;
+    // Quantidade agora é apenas número
+    const quantidade = parseFloat(document.getElementById('quantidadeItemCadastro').value);
+
+    // Gramatura e Unidade Juntos
+    const gramatura = parseFloat(document.getElementById('gramaturaItemCadastro').value);
+    const unidadeMedida = document.getElementById('unidadeItemCadastro').value; // g, kg, ml, L
+
+    const preco = parseFloat(document.getElementById('precoItemCadastro').value);
+    const validade = document.getElementById('validadeItemCadastro').value;
+    const marca = document.getElementById('marcaItemCadastro').value;
+    const codigoBarras = document.getElementById('codigoBarrasItemCadastro').value;
+
+    if (!nome || isNaN(quantidade) || isNaN(preco)) {
+        showCustomAlert('Erro', 'Preencha os campos obrigatórios!');
+        return;
+    }
+
+    const novoItem = {
+        id: proximoIdProduto++,
+        nome,
+        categoria,
+        quantidade,
+        gramatura,
+        unidade: unidadeMedida, // Mantendo compatibilidade com campo 'unidade'
+        preco,
+        validade,
+        marca,
+        codigoBarras
+    };
+
+    produtos.push(novoItem);
+    salvarDados();
+
+    // Atualizar dashboard e outras telas
+    atualizarDashboard();
+
+    // Limpar formulário
+    event.target.reset();
+
+    showCustomAlert('Sucesso!', '✅ Produto cadastrado com sucesso!');
+}
+
+// ==========================================
+// FIXES & OVERRIDES FOR THEME & SIDEBAR
+// ==========================================
+
+// CUSTOM ALERT FUNCTION
+window.showCustomAlert = function (title, message) {
+    const modal = document.getElementById('modalAlert');
+    const titleEl = document.getElementById('modalAlertTitle');
+    const msgEl = document.getElementById('modalAlertMessage');
+    const iconEl = document.getElementById('modalAlertIcon');
+
+    if (!modal) {
+        alert(message); // Fallback
+        return;
+    }
+
+    titleEl.textContent = title || 'Atenção';
+    msgEl.textContent = message;
+
+    // Simple icon logic
+    if (title.toLowerCase().includes('sucesso')) iconEl.textContent = '✅';
+    else if (title.toLowerCase().includes('erro')) iconEl.textContent = '❌';
+    else iconEl.textContent = '⚠️';
+
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+window.closeModalAlert = function () {
+    const modal = document.getElementById('modalAlert');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+// UPDATE BUSINESS NAME
+window.atualizarNomeEmpresa = function () {
+    const nomeInput = document.getElementById('nomeEmpresa');
+    if (!nomeInput) return;
+    const novoNome = nomeInput.value;
+
+    // Save to db
+    let personalizacao = db.get('personalizacao') || {};
+    personalizacao.nomeEmpresa = novoNome;
+    db.save('personalizacao', personalizacao);
+
+    // Update preview in Personalizar section
+    const preview = document.getElementById('previewNome');
+    if (preview) preview.textContent = novoNome;
+}
+
+// Override or definition of color application
+window.aplicarCoresPersonalizadas = function () {
+    const corPrimaria = document.getElementById('corPrimaria').value;
+    const corSecundaria = document.getElementById('corSecundaria').value;
+    const corPrimariaHex = document.getElementById('corPrimariaHex').value;
+    const corSecundariaHex = document.getElementById('corSecundariaHex').value;
+
+    // Capture Nome Empresa as well
+    const nomeEmpresa = document.getElementById('nomeEmpresa')?.value;
+
+    const finalPrimaria = corPrimaria || corPrimariaHex;
+    const finalSecundaria = corSecundaria || corSecundariaHex;
+
+    // Apply CSS Variables
+    document.documentElement.style.setProperty('--cor-primaria', finalPrimaria);
+    document.documentElement.style.setProperty('--cor-secundaria', finalSecundaria);
+
+    // Update Preview Elements if they exist
+    const previewPrimaria = document.getElementById('previewPrimaria');
+    if (previewPrimaria) previewPrimaria.textContent = finalPrimaria;
+
+    const previewSecundaria = document.getElementById('previewSecundaria');
+    if (previewSecundaria) previewSecundaria.textContent = finalSecundaria;
+
+    const previewGradiente = document.getElementById('previewGradiente');
+    if (previewGradiente) previewGradiente.style.background = `linear-gradient(135deg, ${finalPrimaria}, ${finalSecundaria})`;
+
+    // Update Status
+    const status = document.getElementById('statusPersonalizacao');
+    if (status) status.textContent = 'Cores personalizadas ativas';
+
+    // UPDATE SIDEBAR COLORS
+    updateSidebarColors(finalPrimaria);
+
+    // Save
+    let personalizacao = db.get('personalizacao') || {};
+    personalizacao.corPrimaria = finalPrimaria;
+    personalizacao.corSecundaria = finalSecundaria;
+    if (nomeEmpresa) personalizacao.nomeEmpresa = nomeEmpresa;
+
+    if (typeof salvarPersonalizacaoLocal === 'function') {
+        if (window.personalizacao) {
+            window.personalizacao.corPrimaria = finalPrimaria;
+            window.personalizacao.corSecundaria = finalSecundaria;
+            if (nomeEmpresa) window.personalizacao.nomeEmpresa = nomeEmpresa;
+        }
+        salvarPersonalizacaoLocal();
+    } else {
+        db.save('personalizacao', personalizacao);
+    }
+};
+
+window.aplicarTema = function (temaNome) {
+    // Defined themes
+    const themes = {
+        'rosa': { primaria: '#ec4899', secundaria: '#a855f7' },
+        'azul': { primaria: '#3b82f6', secundaria: '#10b981' },
+        'roxo': { primaria: '#8b5cf6', secundaria: '#ec4899' },
+        'verde': { primaria: '#10b981', secundaria: '#3b82f6' },
+        'laranja': { primaria: '#f97316', secundaria: '#ef4444' },
+        'escuro': { primaria: '#1f2937', secundaria: '#4b5563' } // Example
+    };
+
+    const tema = themes[temaNome];
+    if (tema) {
+        document.documentElement.style.setProperty('--cor-primaria', tema.primaria);
+        document.documentElement.style.setProperty('--cor-secundaria', tema.secundaria);
+
+        // Update inputs
+        if (document.getElementById('corPrimaria')) document.getElementById('corPrimaria').value = tema.primaria;
+        if (document.getElementById('corSecundaria')) document.getElementById('corSecundaria').value = tema.secundaria;
+        if (document.getElementById('corPrimariaHex')) document.getElementById('corPrimariaHex').value = tema.primaria;
+        if (document.getElementById('corSecundariaHex')) document.getElementById('corSecundariaHex').value = tema.secundaria;
+
+        // Update sidebar
+        updateSidebarColors(tema.primaria);
+
+        if (typeof salvarPersonalizacao === 'function') salvarPersonalizacao();
+    }
+};
+
+function updateSidebarColors(color) {
+    const sidebarBtns = document.querySelectorAll('.sidebar-btn');
+    sidebarBtns.forEach(btn => {
+        // If active (e.g. bg-pink-500 which we might have removed or want to override)
+        // We check if it SHOULD be active based on current section? 
+        // For now, let's just assume the "active" class logic is handled by showSection
+        // We just ensure dynamic hovering works or active state gets the color.
+
+        if (btn.classList.contains('bg-pink-500') || btn.classList.contains('text-white') || btn.style.backgroundColor !== '') {
+            btn.style.backgroundColor = color;
+            btn.style.color = '#fff';
+            btn.classList.remove('bg-pink-500'); // Remove tailwind class if present to allow inline style
+        }
+
+        // Add hover effect listeners if not present (difficult to check, so we clone)
+        // Actually, let's just set the CSS variable for sidebar and use it in CSS?
+        // But we are in JS mode.
+
+        btn.onmouseover = function () {
+            if (this.style.color !== 'rgb(255, 255, 255)' && this.style.color !== 'white') {
+                this.style.color = color;
+                this.style.backgroundColor = '#f3f4f6'; // gray-100
+            }
+        };
+        btn.onmouseout = function () {
+            if (this.style.color !== 'rgb(255, 255, 255)' && this.style.color !== 'white') {
+                this.style.color = '';
+                this.style.backgroundColor = '';
+            }
+        };
+    });
 }
 
 // Inicializar sistema
@@ -5759,3 +6497,100 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 1000);
     }
 });
+
+// Funcao para importar produtos do Site (window.PRODUCTS_DATA)
+function importarProdutosSite() {
+    if (!window.PRODUCTS_DATA || window.PRODUCTS_DATA.length === 0) {
+        alert('❌ Nenhum dado de produto encontrado (window.PRODUCTS_DATA).');
+        return;
+    }
+
+    let adicionados = 0;
+    let atualizados = 0;
+
+    window.PRODUCTS_DATA.forEach(p => {
+        // Verificar se categoria existe, senão criar
+        if (p.category && !categorias.some(c => c.toLowerCase() === p.category.toLowerCase())) {
+            categorias.push(p.category);
+        }
+
+        // Verificar se receita (produto venda) já existe pelo nome
+        const existe = receitas.find(r => r.nome.toLowerCase() === p.name.toLowerCase());
+
+        if (existe) {
+            atualizados++;
+        } else {
+            // Criar nova receita baseada no produto do site
+            const novaReceita = {
+                id: proximoIdReceita++,
+                nome: p.name,
+                rendimento: 1,
+                ingredientes: [], // Produto final
+                modoPreparo: p.description || '',
+                custoTotal: 0,
+                custoPorPorcao: 0,
+                margemLucro: 100,
+                precoSugerido: p.price,
+                precoVenda: p.price,
+                imagem: p.image,
+                categoria: p.category,
+                badges: p.badges || [],
+                origem: 'site'
+            };
+            receitas.push(novaReceita);
+            adicionados++;
+        }
+    });
+
+    salvarDados();
+    if (typeof atualizarReceitas === 'function') atualizarReceitas();
+
+    alert(`✅ Importação Concluída!\n🆕 Novos: ${adicionados}\n🔄 Existentes (ignorados): ${atualizados}`);
+}
+
+// Funcao para importar historico de vendas (window.HISTORIC_SALES)
+function importarHistoricoVendas() {
+    if (!window.HISTORIC_SALES || window.HISTORIC_SALES.length === 0) {
+        alert('❌ Nenhum dado histórico encontrado.');
+        return;
+    }
+
+    let adicionados = 0;
+
+    window.HISTORIC_SALES.forEach(item => {
+        // Criar objeto de venda
+        const novaVenda = {
+            id: proximoIdVenda++,
+            data: item.data, // Data vinda do arquivo histórico
+            cliente: 'Cliente Histórico',
+            telefone: '',
+            endereco: '',
+            pagamento: 'Outro',
+            itens: [{
+                receita: item.produto,
+                codigo: 'IMP',
+                quantidade: item.qtd,
+                preco: item.valor / item.qtd,
+                custo: 0,
+                total: item.valor,
+                lucro: item.valor
+            }],
+            custoTotal: 0,
+            totalPedido: item.valor,
+            lucroTotal: item.valor,
+            margemMedia: 100,
+            tipo: 'personalizada'
+        };
+
+        vendas.push(novaVenda);
+        adicionados++;
+    });
+
+    salvarDados();
+
+    // Atualizar telas
+    if (typeof atualizarVendas === 'function') atualizarVendas();
+    if (typeof atualizarDashboard === 'function') atualizarDashboard();
+
+    alert(`✅ Histórico Importado!\n📦 ${adicionados} vendas adicionadas.`);
+}

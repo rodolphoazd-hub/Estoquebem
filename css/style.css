@@ -138,3 +138,25 @@
                 display: none;
             }
         }
+
+        /* Sidebar Collapse Styles */
+        @media (min-width: 768px) {
+            #desktopSidebar {
+                transition: width 0.3s ease;
+            }
+
+            #desktopSidebar.collapsed {
+                width: 5rem;
+                /* w-20 */
+            }
+
+            #desktopSidebar.collapsed .nav-text {
+                display: none;
+            }
+
+            #desktopSidebar.collapsed .sidebar-btn {
+                justify-content: center;
+                padding-left: 0;
+                padding-right: 0;
+            }
+        }

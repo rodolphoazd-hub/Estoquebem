@@ -62,6 +62,46 @@
     </div>
 
     <script src="js/db.js"></script>
+    <script>
+        // Carregar personalização no Login
+        document.addEventListener('DOMContentLoaded', () => {
+            const dbRef = new LocalDB();
+            const personalizacao = dbRef.get('personalizacao');
+
+            if (personalizacao) {
+                // Aplicar cores
+                if (personalizacao.corPrimaria) {
+                    document.documentElement.style.setProperty('--cor-primaria', personalizacao.corPrimaria);
+                    // Criar estilo dinâmico para substituir classes do Tailwind se necessário
+                    // Mas como o login usa classes utilitárias diretas (bg-gradient), precisamos ajustar via JS
+
+                    const btn = document.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.style.background = `linear-gradient(to right, ${personalizacao.corPrimaria}, ${personalizacao.corSecundaria})`;
+                        btn.style.boxShadow = `0 10px 15px -3px ${personalizacao.corPrimaria}40`; // Opacity hex roughly
+                    }
+
+                    const title = document.querySelector('h1');
+                    if (title) title.style.color = personalizacao.corPrimaria;
+
+                    const inputs = document.querySelectorAll('input');
+                    inputs.forEach(inp => {
+                        inp.addEventListener('focus', () => {
+                            inp.style.borderColor = personalizacao.corPrimaria;
+                            inp.style.ringColor = personalizacao.corPrimaria;
+                        });
+                    });
+                }
+
+                // Aplicar Nome da Empresa
+                if (personalizacao.nomeEmpresa) {
+                    const h1 = document.querySelector('h1');
+                    if (h1) h1.textContent = personalizacao.nomeEmpresa;
+                    document.title = `Login - ${personalizacao.nomeEmpresa}`;
+                }
+            }
+        });
+    </script>
     <script src="js/auth.js"></script>
 </body>
 
