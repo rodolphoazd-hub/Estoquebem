@@ -54,6 +54,51 @@ O Dashboard oferece uma visão instantânea da saúde do negócio:
 
 ---
 
+## 📊 Modelagem de Dados (MER/DER)
+
+Este modelo descreve as entidades e relacionamentos do banco de dados persistido no `localStorage`.
+
+### Modelo Entidade-Relacionamento (Conceitual)
+```mermaid
+erDiagram
+    PRODUTO ||--o{ INGREDIENTE : "usado em"
+    RECEITA ||--|{ INGREDIENTE : "composta por"
+    RECEITA ||--o{ ITEM_VENDA : "vendida como"
+    VENDA ||--|{ ITEM_VENDA : "contém"
+    CATEGORIA ||--o{ PRODUTO : "classifica"
+
+    PRODUTO {
+        int id
+        string nome
+        string categoria
+        float quantidade
+        string unidade
+        float preco
+    }
+
+    RECEITA {
+        int id
+        string nome
+        float precoVenda
+        float custoTotal
+    }
+
+    VENDA {
+        int id
+        datetime data
+        string cliente
+        float totalPedido
+    }
+```
+
+### Detalhamento das Entidades
+
+1. **Produtos (Estoque)**: Cadastro de insumos brutos com controle de saldo, unidade de medida e validade.
+2. **Receitas**: Produtos finais precificados com base no custo real dos ingredientes utilizados.
+3. **Vendas**: Registro completo de saídas, integrando o cálculo de lucro bruto e margem por transação.
+
+---
+
 ## 🔧 Guia de Manutenção
 
 ### Correção de Datas e Fuso Horário

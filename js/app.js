@@ -969,6 +969,16 @@ function atualizarDashboard() {
     document.getElementById('valorTotal').textContent = `R$ ${valorTotal.toFixed(2)}`;
     document.getElementById('totalCategorias').textContent = categorias;
 
+    // Atualizar Vendas Total no Dash (se existir)
+    const vendasTotal = vendas.reduce((sum, v) => sum + v.totalPedido, 0);
+    const dashTotalEl = document.getElementById('vendasTotalDash');
+    if (dashTotalEl) dashTotalEl.textContent = `R$ ${vendasTotal.toFixed(2)}`;
+
+    // Atualizar ranking de clientes
+    if (typeof atualizarTopClientes === 'function') {
+        atualizarTopClientes();
+    }
+
     // Aplicar filtros e atualizar tabela
     filtrarInventario();
 }
@@ -1628,6 +1638,203 @@ function calcularTotalCustom() {
     document.getElementById('valorVendaCustom').value = total.toFixed(2);
 }
 
+// Função para adicionar item personalizado ao pedido
+function adicionarItemPedidoCustom() {
+    const container = document.getElementById('itensPedidoCustom');
+    const itemCount = container.children.length + 1;
+
+    const newItem = document.createElement('div');
+    newItem.className = 'item-pedido-custom bg-white border border-gray-200 rounded-lg p-4';
+
+    // Data padrão (hoje)
+    const hoje = new Date();
+    const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+
+    newItem.innerHTML = `
+        <div class="flex justify-between items-start mb-3">
+            <span class="font-medium text-gray-800">Item Personalizado ${itemCount}</span>
+            <button type="button" onclick="removerItemPedidoCustom(this)" class="text-red-500 hover:text-red-700">🗑️</button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Data da Venda</label>
+                <input type="date" class="data-item-custom w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" value="${hojeStr}" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Código do Produto (Opcional)</label>
+                <input type="text" class="codigo-custom w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Produto</label>
+                <div class="relative">
+                    <input type="text" class="nome-custom w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" 
+                           list="listaProdutosCustom" 
+                           placeholder="Digite para buscar ou cadastrar novo"
+                           oninput="buscarProdutosCustom(this)"
+                           required>
+                    <datalist id="listaProdutosCustom"></datalist>
+                </div>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                <input type="number" class="quantidade-custom w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" min="1" step="1" value="1" oninput="calcularTotalItemCustom(this)" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Valor Unitário (R$)</label>
+                <input type="number" class="valor-unitario-custom w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" step="0.01" min="0" value="0" oninput="calcularTotalItemCustom(this)" required>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Valor Total (R$)</label>
+                <input type="number" class="valor-total-custom w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg" step="0.01" min="0" readonly>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(newItem);
+
+    // Atualizar lista de produtos
+    atualizarListaProdutosCustom();
+
+    // Mostrar botão de remover em todos os itens se houver mais de um
+    const removeButtons = container.querySelectorAll('button[onclick*="removerItemPedidoCustom"]');
+    removeButtons.forEach(btn => btn.classList.remove('hidden'));
+}
+
+// Função para remover item personalizado do pedido
+function removerItemPedidoCustom(button) {
+    const container = document.getElementById('itensPedidoCustom');
+    button.closest('.item-pedido-custom').remove();
+
+    // Renumerar itens
+    const items = container.querySelectorAll('.item-pedido-custom');
+    items.forEach((item, index) => {
+        const label = item.querySelector('span');
+        label.textContent = `Item Personalizado ${index + 1}`;
+    });
+
+    // Esconder botão de remover se houver apenas um item
+    if (items.length === 1) {
+        const removeButton = items[0].querySelector('button[onclick*="removerItemPedidoCustom"]');
+        if (removeButton) removeButton.classList.add('hidden');
+    }
+
+    calcularTotalPedidoCustom();
+}
+
+// Função para calcular total de um item personalizado
+function calcularTotalItemCustom(input) {
+    const itemDiv = input.closest('.item-pedido-custom');
+    const quantidade = parseFloat(itemDiv.querySelector('.quantidade-custom').value) || 0;
+    const valorUnitario = parseFloat(itemDiv.querySelector('.valor-unitario-custom').value) || 0;
+    const total = quantidade * valorUnitario;
+
+    itemDiv.querySelector('.valor-total-custom').value = total.toFixed(2);
+
+    calcularTotalPedidoCustom();
+}
+
+// Função para calcular total do pedido personalizado
+function calcularTotalPedidoCustom() {
+    const items = document.querySelectorAll('.item-pedido-custom');
+    let totalPedido = 0;
+
+    items.forEach(item => {
+        const valorTotal = parseFloat(item.querySelector('.valor-total-custom').value) || 0;
+        totalPedido += valorTotal;
+    });
+
+    // Atualizar resumo do pedido (vendas personalizadas não têm custo)
+    document.getElementById('custoTotalPedido').textContent = 'R$ 0,00';
+    document.getElementById('totalPedido').textContent = `R$ ${totalPedido.toFixed(2)}`;
+    document.getElementById('lucroTotalPedido').textContent = `R$ ${totalPedido.toFixed(2)}`;
+    document.getElementById('margemMediaPedido').textContent = '100%';
+}
+
+// Função para alternar entre tipos de venda
+function toggleTipoVenda(tipo) {
+    tipoVendaAtual = tipo;
+    const modoProduto = document.getElementById('vendaModoProduto');
+    const modoPersonalizado = document.getElementById('vendaModoPersonalizado');
+
+    if (tipo === 'produto') {
+        modoProduto.classList.remove('hidden');
+        modoPersonalizado.classList.add('hidden');
+        calcularTotalPedido();
+    } else {
+        modoProduto.classList.add('hidden');
+        modoPersonalizado.classList.remove('hidden');
+
+        // Inicializar com um item personalizado se não houver nenhum
+        const container = document.getElementById('itensPedidoCustom');
+        if (container && container.children.length === 0) {
+            adicionarItemPedidoCustom();
+        }
+
+        calcularTotalPedidoCustom();
+    }
+}
+
+// Função para atualizar lista de produtos customizados (histórico de vendas)
+function atualizarListaProdutosCustom() {
+    const datalist = document.getElementById('listaProdutosCustom');
+    if (!datalist) return;
+
+    datalist.innerHTML = '';
+
+    // Extrair produtos únicos de vendas personalizadas anteriores
+    const produtosUnicos = new Set();
+
+    vendas.forEach(venda => {
+        if (venda.tipo === 'personalizada') {
+            venda.itens.forEach(item => {
+                if (item.receita) {
+                    produtosUnicos.add(item.receita);
+                }
+            });
+        }
+    });
+
+    // Adicionar opções ao datalist
+    Array.from(produtosUnicos).sort().forEach(produto => {
+        const option = document.createElement('option');
+        option.value = produto;
+        datalist.appendChild(option);
+    });
+}
+
+// Função para buscar produtos enquanto digita
+function buscarProdutosCustom(input) {
+    const valor = input.value.trim();
+
+    // Se o campo estiver vazio, apenas atualizar a lista
+    if (!valor) {
+        atualizarListaProdutosCustom();
+        return;
+    }
+
+    // Buscar em vendas anteriores e sugerir preço
+    const produtoEncontrado = vendas.find(venda =>
+        venda.tipo === 'personalizada' &&
+        venda.itens.some(item => item.receita.toLowerCase() === valor.toLowerCase())
+    );
+
+    if (produtoEncontrado) {
+        const item = produtoEncontrado.itens.find(i => i.receita.toLowerCase() === valor.toLowerCase());
+        if (item) {
+            // Sugerir o último preço usado
+            const itemDiv = input.closest('.item-pedido-custom');
+            const valorUnitarioInput = itemDiv.querySelector('.valor-unitario-custom');
+
+            if (valorUnitarioInput && parseFloat(valorUnitarioInput.value) === 0) {
+                valorUnitarioInput.value = item.preco.toFixed(2);
+                calcularTotalItemCustom(valorUnitarioInput);
+            }
+        }
+    }
+}
+
 // Função para abrir modal de nova venda e resetar formulário
 function abrirModalNovaVenda() {
     // Resetar estado de edição
@@ -1665,13 +1872,11 @@ function abrirModalNovaVenda() {
     if (document.getElementById('margemMediaPedido')) document.getElementById('margemMediaPedido').textContent = '0%';
 
     // Limpar campos personalizados
-    if (document.getElementById('codigoProdutoCustom')) document.getElementById('codigoProdutoCustom').value = '';
-    if (document.getElementById('nomeProdutoCustom')) document.getElementById('nomeProdutoCustom').value = '';
-    if (document.getElementById('quantidadeCustom')) document.getElementById('quantidadeCustom').value = '1';
-    if (document.getElementById('valorUnitarioCustom')) document.getElementById('valorUnitarioCustom').value = '';
-    if (document.getElementById('valorVendaCustom')) document.getElementById('valorVendaCustom').value = '';
-    if (document.getElementById('pagamentoCustom')) document.getElementById('pagamentoCustom').value = '';
-    if (document.getElementById('enderecoCustom')) document.getElementById('enderecoCustom').value = '';
+    const itensCustomContainer = document.getElementById('itensPedidoCustom');
+    if (itensCustomContainer) {
+        itensCustomContainer.innerHTML = '';
+        // Não adicionar item aqui, será adicionado quando alternar para modo personalizado
+    }
 
     // Abrir modal
     if (typeof openModal === 'function') {
@@ -1912,17 +2117,34 @@ function editarVenda(id) {
         calcularTotalPedido();
 
     } else {
-        // Venda Personalizada
-        const item = venda.itens[0]; // Venda personalizada tem 1 item
-        if (item) {
-            document.getElementById('codigoProdutoCustom').value = item.codigo || '';
-            document.getElementById('nomeProdutoCustom').value = item.receita || ''; // receita guarda o nome
-            document.getElementById('quantidadeCustom').value = item.quantidade || 1;
-            document.getElementById('valorUnitarioCustom').value = item.preco || 0;
-            document.getElementById('valorVendaCustom').value = item.total || 0;
-        }
-        document.getElementById('pagamentoCustom').value = venda.pagamento || '';
-        document.getElementById('enderecoCustom').value = venda.endereco || '';
+        // Venda Personalizada - Múltiplos Itens
+        const itensCustomContainer = document.getElementById('itensPedidoCustom');
+        itensCustomContainer.innerHTML = ''; // Limpar atuais
+
+        // Recriar itens personalizados
+        venda.itens.forEach(item => {
+            adicionarItemPedidoCustom();
+            const lastItem = itensCustomContainer.lastElementChild;
+
+            // Preencher data do item (se existir, senão usar data da venda)
+            const dataItemInput = lastItem.querySelector('.data-item-custom');
+            if (dataItemInput) {
+                dataItemInput.value = item.dataVenda || venda.data;
+            }
+
+            lastItem.querySelector('.codigo-custom').value = item.codigo || '';
+            lastItem.querySelector('.nome-custom').value = item.receita || '';
+            lastItem.querySelector('.quantidade-custom').value = item.quantidade || 1;
+            lastItem.querySelector('.valor-unitario-custom').value = item.preco || 0;
+            lastItem.querySelector('.valor-total-custom').value = item.total || 0;
+        });
+
+        // Preencher campos adicionais (agora do formulário comum)
+        document.getElementById('pagamentoPedido').value = venda.pagamento || '';
+        document.getElementById('enderecoPedido').value = venda.endereco || '';
+
+        // Recalcular total
+        calcularTotalPedidoCustom();
     }
 }
 
@@ -2006,17 +2228,51 @@ function finalizarPedido() {
         };
 
     } else {
-        // Lógica de Venda Personalizada
-        const codigo = document.getElementById('codigoProdutoCustom').value;
-        const nomeProduto = document.getElementById('nomeProdutoCustom').value;
-        const quantidade = parseFloat(document.getElementById('quantidadeCustom').value) || 1;
-        const valorUnitario = parseFloat(document.getElementById('valorUnitarioCustom').value) || 0;
-        const valorVenda = parseFloat(document.getElementById('valorVendaCustom').value);
-        const pagamento = document.getElementById('pagamentoCustom').value;
-        const endereco = document.getElementById('enderecoCustom').value;
+        // Lógica de Venda Personalizada - Múltiplos Itens
+        const itemsCustom = document.querySelectorAll('.item-pedido-custom');
+        const itensPersonalizados = [];
 
-        if (!nomeProduto || !valorVenda || !pagamento) {
-            showCustomAlert('⚠️ Atenção', 'Preencha Nome do Produto, Valor Unitário e Forma de Pagamento!');
+        let valid = true;
+        let totalVenda = 0;
+
+        itemsCustom.forEach(item => {
+            const dataItem = item.querySelector('.data-item-custom').value;
+            const codigo = item.querySelector('.codigo-custom').value;
+            const nomeProduto = item.querySelector('.nome-custom').value;
+            const quantidade = parseFloat(item.querySelector('.quantidade-custom').value) || 1;
+            const valorUnitario = parseFloat(item.querySelector('.valor-unitario-custom').value) || 0;
+            const valorTotal = parseFloat(item.querySelector('.valor-total-custom').value) || 0;
+
+            if (!nomeProduto || valorUnitario <= 0 || !dataItem) {
+                valid = false;
+                return;
+            }
+
+            itensPersonalizados.push({
+                receita: nomeProduto, // Usando campo 'receita' para manter compatibilidade com tabela
+                codigo: codigo,
+                quantidade: quantidade,
+                preco: valorUnitario, // Preço Unitário
+                custo: 0,
+                total: valorTotal,    // Total calculado
+                lucro: valorTotal,
+                dataVenda: dataItem   // Data individual do item
+            });
+
+            totalVenda += valorTotal;
+        });
+
+        if (!valid || itensPersonalizados.length === 0) {
+            showCustomAlert('⚠️ Atenção', 'Preencha todos os campos dos itens personalizados, incluindo a data!');
+            return;
+        }
+
+        // Obter informações adicionais (agora do formulário comum)
+        const pagamento = document.getElementById('pagamentoPedido').value;
+        const endereco = document.getElementById('enderecoPedido').value;
+
+        if (!pagamento) {
+            showCustomAlert('⚠️ Atenção', 'Selecione a forma de pagamento!');
             return;
         }
 
@@ -2027,18 +2283,10 @@ function finalizarPedido() {
             telefone,
             endereco,
             pagamento,
-            itens: [{
-                receita: nomeProduto, // Usando campo 'receita' para manter compatibilidade com tabela
-                codigo: codigo,
-                quantidade: quantidade,
-                preco: valorUnitario, // Preço Unitário
-                custo: 0,
-                total: valorVenda,    // Total calculado
-                lucro: valorVenda
-            }],
+            itens: itensPersonalizados,
             custoTotal: 0,
-            totalPedido: valorVenda,
-            lucroTotal: valorVenda,
+            totalPedido: totalVenda,
+            lucroTotal: totalVenda,
             margemMedia: 100,
             tipo: 'personalizada'
         };
@@ -2105,11 +2353,15 @@ function atualizarVendas() {
     const margemMedia = vendas.length > 0 ?
         vendas.reduce((sum, v) => sum + v.margemMedia, 0) / vendas.length : 0;
 
+    const vendasTotal = vendas.reduce((sum, v) => sum + v.totalPedido, 0);
+
     // Atualizar cards
     document.getElementById('vendasHoje').textContent = `R$ ${vendasHoje.toFixed(2)}`;
     document.getElementById('vendasMes').textContent = `R$ ${vendasMes.toFixed(2)}`;
     document.getElementById('lucroMes').textContent = `R$ ${lucroMes.toFixed(2)}`;
     document.getElementById('margemMedia').textContent = `${margemMedia.toFixed(1)}%`;
+    const totalEl = document.getElementById('vendasTotal');
+    if (totalEl) totalEl.textContent = `R$ ${vendasTotal.toFixed(2)}`;
 
     // Atualizar gráficos
     atualizarGraficos();
@@ -2197,39 +2449,54 @@ function atualizarTopClientes() {
         return;
     }
 
-    // Contar frequência
-    const frequencia = {};
-    const totalGasto = {};
+    // Contar frequência, total gasto e pegar o último ID de venda para desempate
+    const estatisticas = {};
 
     vendas.forEach(v => {
         const nome = v.cliente;
-        frequencia[nome] = (frequencia[nome] || 0) + 1;
-        totalGasto[nome] = (totalGasto[nome] || 0) + v.totalPedido;
+        if (!estatisticas[nome]) {
+            estatisticas[nome] = {
+                frequencia: 0,
+                totalGasto: 0,
+                ultimoIdVenda: 0
+            };
+        }
+        estatisticas[nome].frequencia += 1;
+        estatisticas[nome].totalGasto += v.totalPedido;
+        estatisticas[nome].ultimoIdVenda = Math.max(estatisticas[nome].ultimoIdVenda, v.id);
     });
 
-    // Ordenar por frequência
-    const topClientes = Object.entries(frequencia)
-        .sort(([, a], [, b]) => b - a)
+    // Ordenar por frequência DESC, depois totalGasto DESC, depois ultimoIdVenda DESC (mais recente)
+    const topClientes = Object.entries(estatisticas)
+        .sort(([, a], [, b]) => {
+            if (b.frequencia !== a.frequencia) return b.frequencia - a.frequencia;
+            if (b.totalGasto !== a.totalGasto) return b.totalGasto - a.totalGasto;
+            return b.ultimoIdVenda - a.ultimoIdVenda;
+        })
         .slice(0, 5); // Top 5
 
-    const maxFreq = topClientes[0][1];
+    const maxFreq = topClientes.length > 0 ? topClientes[0][1].frequencia : 0;
 
-    topClientes.forEach(([cliente, freq], index) => {
-        const porcentagem = (freq / maxFreq) * 100;
-        const gasto = totalGasto[cliente];
+    topClientes.forEach(([cliente, stats], index) => {
+        const freq = stats.frequencia;
+        const gasto = stats.totalGasto;
+        const porcentagem = maxFreq > 0 ? (freq / maxFreq) * 100 : 0;
 
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
         item.innerHTML = `
-            <div class="flex-1">
-                <div class="flex justify-between mb-1">
-                    <span class="font-medium text-gray-800">${index + 1}. ${cliente}</span>
-                    <span class="text-xs text-gray-500">${freq} compras</span>
+            <div class="flex items-center space-x-3 overflow-hidden">
+                <div class="text-lg flex-shrink-0">${index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}</div>
+                <div class="overflow-hidden">
+                    <div class="font-medium text-gray-800 truncate" title="${cliente}">${cliente}</div>
+                    <div class="text-xs text-gray-500">${freq} ${freq === 1 ? 'compra' : 'compras'}</div>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
-                    <div class="bg-blue-500 h-2 rounded-full" style="width: ${porcentagem}%"></div>
+            </div>
+            <div class="text-right flex-shrink-0">
+                <div class="font-bold text-blue-600">R$ ${gasto.toFixed(2)}</div>
+                <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div class="bg-blue-500 h-1.5 rounded-full" style="width: ${porcentagem}%"></div>
                 </div>
-                <div class="text-xs text-gray-500 text-right">Total: R$ ${gasto.toFixed(2)}</div>
             </div>
         `;
         container.appendChild(item);
@@ -3749,10 +4016,6 @@ function atualizarStatusPersonalizacao() {
 }
 
 // Funções auxiliares
-function editarProduto(id) {
-    alert('Função de edição em desenvolvimento!');
-}
-
 function excluirProduto(id) {
     if (confirm('Tem certeza que deseja excluir este produto?')) {
         produtos = produtos.filter(p => p.id !== id);
@@ -6496,6 +6759,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }, 1000);
     }
+
+    // Sincronização automática entre abas
+    window.addEventListener('storage', (event) => {
+        if (event.key === db.prefix + 'dados') {
+            console.log('🔄 Dados atualizados em outra aba, sincronizando...');
+            if (carregarDados()) {
+                atualizarDashboard();
+                atualizarVendas();
+                atualizarReceitas();
+                verificarNotificacoes();
+            }
+        }
+    });
 });
 
 // Funcao para importar produtos do Site (window.PRODUCTS_DATA)

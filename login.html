@@ -10,7 +10,7 @@
     <style>
         body {
             font-family: 'Outfit', sans-serif;
-            background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+            background: linear-gradient(135deg, #e2c57a 0%, #fce7f3 100%);
         }
 
         .glass-card {
@@ -57,7 +57,7 @@
         </form>
 
         <p class="text-center mt-6 text-sm text-gray-400">
-            &copy; 2025 Doce Controle
+            &copy; 2025 Bem Brownieria. Todos os direitos reservados.
         </p>
     </div>
 
@@ -69,35 +69,58 @@
             const personalizacao = dbRef.get('personalizacao');
 
             if (personalizacao) {
-                // Aplicar cores
-                if (personalizacao.corPrimaria) {
-                    document.documentElement.style.setProperty('--cor-primaria', personalizacao.corPrimaria);
-                    // Criar estilo dinâmico para substituir classes do Tailwind se necessário
-                    // Mas como o login usa classes utilitárias diretas (bg-gradient), precisamos ajustar via JS
-
-                    const btn = document.querySelector('button[type="submit"]');
-                    if (btn) {
-                        btn.style.background = `linear-gradient(to right, ${personalizacao.corPrimaria}, ${personalizacao.corSecundaria})`;
-                        btn.style.boxShadow = `0 10px 15px -3px ${personalizacao.corPrimaria}40`; // Opacity hex roughly
+                // 1. Aplicar Logo
+                const logoContainer = document.querySelector('.text-6xl.mb-4');
+                if (logoContainer) {
+                    if (personalizacao.logoTipo === 'imagem' && personalizacao.logo) {
+                        logoContainer.innerHTML = `<img src="${personalizacao.logo}" alt="Logo" class="h-20 w-auto mx-auto drop-shadow-lg">`;
+                        logoContainer.classList.remove('text-6xl'); // Remover tamanho de texto se for imagem
+                    } else if (personalizacao.emoji) {
+                        logoContainer.textContent = personalizacao.emoji;
                     }
-
-                    const title = document.querySelector('h1');
-                    if (title) title.style.color = personalizacao.corPrimaria;
-
-                    const inputs = document.querySelectorAll('input');
-                    inputs.forEach(inp => {
-                        inp.addEventListener('focus', () => {
-                            inp.style.borderColor = personalizacao.corPrimaria;
-                            inp.style.ringColor = personalizacao.corPrimaria;
-                        });
-                    });
                 }
 
-                // Aplicar Nome da Empresa
+                // 2. Aplicar Nome da Empresa e Título
                 if (personalizacao.nomeEmpresa) {
                     const h1 = document.querySelector('h1');
                     if (h1) h1.textContent = personalizacao.nomeEmpresa;
                     document.title = `Login - ${personalizacao.nomeEmpresa}`;
+
+                    const footer = document.querySelector('p.text-center.mt-6');
+                    if (footer) footer.innerHTML = `&copy; ${new Date().getFullYear()} ${personalizacao.nomeEmpresa}. Todos os direitos reservados.`;
+                }
+
+                // 3. Aplicar Cores (Tema)
+                const cores = personalizacao.coresPersonalizadas;
+                if (cores && cores.ativo) {
+                    const primaria = cores.primaria;
+                    const secundaria = cores.secundaria;
+
+                    // Ajustar Fundo da Página
+                    document.body.style.background = `linear-gradient(135deg, ${primaria}15 0%, ${secundaria}15 100%)`;
+
+                    // Botão Login
+                    const btn = document.querySelector('button[type="submit"]');
+                    if (btn) {
+                        btn.style.background = `linear-gradient(to right, ${primaria}, ${secundaria})`;
+                        btn.style.boxShadow = `0 10px 15px -3px ${primaria}40`;
+                        btn.className = btn.className.replace(/from-pink-500|to-rose-500|shadow-pink-200/g, '');
+                    }
+
+                    // Título
+                    const h1 = document.querySelector('h1');
+                    if (h1) h1.style.color = primaria;
+
+                    // Inputs Focus
+                    const style = document.createElement('style');
+                    style.textContent = `
+                        input:focus { 
+                            border-color: ${primaria} !important; 
+                            ring-color: ${primaria}20 !important;
+                            box-shadow: 0 0 0 3px ${primaria}20 !important;
+                        }
+                    `;
+                    document.head.appendChild(style);
                 }
             }
         });
